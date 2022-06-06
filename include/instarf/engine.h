@@ -22,10 +22,12 @@ public:
   ~Engine() = default;
 
   VkInstance instance() const;
+  VkPhysicalDevice physicalDevice() const;
   VkDevice device() const;
   int queueIndex() const;
   VkQueue queue() const;
   VmaAllocator allocator() const;
+  VkDescriptorPool descriptorPool() const;
 
   void waitIdle();
 

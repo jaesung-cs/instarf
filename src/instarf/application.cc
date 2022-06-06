@@ -18,6 +18,9 @@
 #include <instarf/descriptor_layout.h>
 #include <instarf/pipeline_layout.h>
 #include <instarf/graphics_pipeline.h>
+#include <instarf/descriptor.h>
+#include <instarf/uniform_buffer.h>
+#include <instarf/shader/camera_ubo.h>
 
 namespace instarf {
 
@@ -97,6 +100,11 @@ void Application::run() {
   pipelineInfo.subpass = 0;
   GraphicsPipeline colorPipeline(engine, pipelineInfo);
 
+  UniformBuffer<CameraUbo> cameraBuffer(engine, swapchain.imageCount());
+
+  Descriptor cameraDescriptor(engine, cameraLayout);
+  cameraDescriptor.bind(0, cameraBuffer);
+
   while (!glfwWindowShouldClose(window_)) {
     glfwPollEvents();
 
@@ -114,7 +122,7 @@ void Application::run() {
 
     if (swapchain.begin()) {
       auto cb = swapchain.commandBuffer();
-      auto image = swapchain.image();
+      auto imageIndex = swapchain.imageIndex();
 
       VkCommandBufferBeginInfo beginInfo = {
           VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
@@ -157,6 +165,16 @@ void Application::run() {
       vkCmdSetScissor(cb, 0, 1, &scissor);
 
       vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, colorPipeline);
+
+      cameraBuffer[imageIndex].projection = glm::mat4(1.f);
+      cameraBuffer[imageIndex].view = glm::mat4(1.f);
+
+      std::vector<VkDescriptorSet> descriptors = {cameraDescriptor};
+      std::vector<uint32_t> offsets = {cameraBuffer.offset(imageIndex)};
+      vkCmdBindDescriptorSets(cb, VK_PIPELINE_BIND_POINT_GRAPHICS,
+                              pipelineLayout, 0, descriptors.size(),
+                              descriptors.data(), offsets.size(),
+                              offsets.data());
 
       struct ModelPush {
         glm::mat4 model;

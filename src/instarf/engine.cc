@@ -154,9 +154,27 @@ public:
     allocatorInfo.instance = instance_;
     allocatorInfo.vulkanApiVersion = applicationInfo.apiVersion;
     vmaCreateAllocator(&allocatorInfo, &allocator_);
+
+    // Descriptor pool
+    std::vector<VkDescriptorPoolSize> poolSizes = {
+        {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, 1024},
+    };
+    VkDescriptorPoolCreateInfo descriptorPoolInfo = {
+        VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO};
+    descriptorPoolInfo.flags =
+        VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
+    descriptorPoolInfo.maxSets = 1024;
+    descriptorPoolInfo.poolSizeCount = poolSizes.size();
+    descriptorPoolInfo.pPoolSizes = poolSizes.data();
+    vkCreateDescriptorPool(device_, &descriptorPoolInfo, nullptr,
+                           &descriptorPool_);
   }
 
   ~Impl() {
+    vkDestroyDescriptorPool(device_, descriptorPool_, nullptr);
+
+    vmaDestroyAllocator(allocator_);
+
     vkDestroyDevice(device_, nullptr);
 
     destroyDebugUtilsMessengerEXT(instance_, messenger_, nullptr);
@@ -164,10 +182,12 @@ public:
   }
 
   auto instance() const noexcept { return instance_; }
+  auto physicalDevice() const noexcept { return physicalDevice_; }
   auto device() const noexcept { return device_; }
   auto queueIndex() const noexcept { return queueIndex_; }
   auto queue() const noexcept { return queue_; }
   auto allocator() const noexcept { return allocator_; }
+  auto descriptorPool() const noexcept { return descriptorPool_; }
 
   void waitIdle() { vkDeviceWaitIdle(device_); }
 
@@ -181,16 +201,23 @@ private:
   VkQueue queue_;
 
   VmaAllocator allocator_;
+  VkDescriptorPool descriptorPool_;
 };
 
 Engine::Engine(const EngineInfo& createInfo)
     : impl_(std::make_shared<Impl>(createInfo)) {}
 
 VkInstance Engine::instance() const { return impl_->instance(); }
+VkPhysicalDevice Engine::physicalDevice() const {
+  return impl_->physicalDevice();
+}
 VkDevice Engine::device() const { return impl_->device(); }
 int Engine::queueIndex() const { return impl_->queueIndex(); }
 VkQueue Engine::queue() const { return impl_->queue(); }
 VmaAllocator Engine::allocator() const { return impl_->allocator(); }
+VkDescriptorPool Engine::descriptorPool() const {
+  return impl_->descriptorPool();
+}
 
 void Engine::waitIdle() { impl_->waitIdle(); }
 
