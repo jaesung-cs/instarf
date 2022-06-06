@@ -18,6 +18,10 @@ public:
   explicit Engine(const EngineCreateInfo& engineInfo);
   ~Engine();
 
+  auto instance() const noexcept { return instance_; }
+  auto device() const noexcept { return device_; }
+  auto queue() const noexcept { return queue_; }
+
 private:
   VkInstance instance_;
   VkDebugUtilsMessengerEXT messenger_;

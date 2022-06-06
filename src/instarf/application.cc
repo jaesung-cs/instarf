@@ -2,9 +2,11 @@
 
 #include <stdexcept>
 
+#define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 
 #include <instarf/engine.h>
+#include <instarf/swapchain.h>
 
 namespace instarf {
 
@@ -16,7 +18,6 @@ Application::~Application() { glfwTerminate(); }
 
 void Application::run() {
   glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-  glfwWindowHint(GLFW_RESIZABLE, GL_FALSE);
   width_ = 1600;
   height_ = 900;
   window_ = glfwCreateWindow(width_, height_, "instarf", NULL, NULL);
@@ -31,10 +32,23 @@ void Application::run() {
       instanceExtensions, instanceExtensions + instanceExtensionCount);
   Engine engine(engineInfo);
 
+  auto instance = engine.instance();
+  VkSurfaceKHR surface;
+  glfwCreateWindowSurface(instance, window_, nullptr, &surface);
+
+  int width, height;
+  glfwGetFramebufferSize(window_, &width, &height);
+  Swapchain swapchain(engine, surface);
+
   while (!glfwWindowShouldClose(window_)) {
     glfwPollEvents();
 
-    // TODO
+    glfwGetFramebufferSize(window_, &width, &height);
+    if (swapchain.resize(width, height)) {
+      // TODO: update swapchain-dependent resources
+    }
+
+    // TODO: draw
   }
 
   glfwDestroyWindow(window_);
