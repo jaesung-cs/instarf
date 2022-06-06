@@ -168,9 +168,18 @@ public:
     descriptorPoolInfo.pPoolSizes = poolSizes.data();
     vkCreateDescriptorPool(device_, &descriptorPoolInfo, nullptr,
                            &descriptorPool_);
+
+    // Command pool
+    VkCommandPoolCreateInfo commandPoolInfo = {
+        VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO};
+    commandPoolInfo.flags = VK_COMMAND_POOL_CREATE_TRANSIENT_BIT;
+    commandPoolInfo.queueFamilyIndex = queueIndex_;
+    vkCreateCommandPool(device_, &commandPoolInfo, nullptr, &commandPool_);
   }
 
   ~Impl() {
+    vkDestroyCommandPool(device_, commandPool_, nullptr);
+
     vkDestroyDescriptorPool(device_, descriptorPool_, nullptr);
 
     vmaDestroyAllocator(allocator_);
@@ -189,6 +198,25 @@ public:
   auto allocator() const noexcept { return allocator_; }
   auto descriptorPool() const noexcept { return descriptorPool_; }
 
+  void submit(CommandRecordFunc command) {
+    // TODO: reuse command buffer
+    VkCommandBuffer cb;
+
+    VkCommandBufferAllocateInfo commandBufferInfo = {
+        VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO};
+    commandBufferInfo.commandPool = commandPool_;
+    commandBufferInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+    commandBufferInfo.commandBufferCount = 1;
+    vkAllocateCommandBuffers(device_, &commandBufferInfo, &cb);
+
+    command(cb);
+
+    VkSubmitInfo submitInfo = {VK_STRUCTURE_TYPE_SUBMIT_INFO};
+    submitInfo.commandBufferCount = 1;
+    submitInfo.pCommandBuffers = &cb;
+    vkQueueSubmit(queue_, 1, &submitInfo, nullptr);
+  }
+
   void waitIdle() { vkDeviceWaitIdle(device_); }
 
 private:
@@ -202,6 +230,7 @@ private:
 
   VmaAllocator allocator_;
   VkDescriptorPool descriptorPool_;
+  VkCommandPool commandPool_;
 };
 
 Engine::Engine(const EngineInfo& createInfo)
@@ -219,6 +248,7 @@ VkDescriptorPool Engine::descriptorPool() const {
   return impl_->descriptorPool();
 }
 
+void Engine::submit(CommandRecordFunc command) { impl_->submit(command); }
 void Engine::waitIdle() { impl_->waitIdle(); }
 
 }  // namespace instarf

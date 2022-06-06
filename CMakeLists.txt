@@ -63,6 +63,7 @@ target_link_libraries(irf
   nlohmann_json nlohmann_json::nlohmann_json
   glm::glm
   glfw
+  imgui::imgui
   VulkanMemoryAllocator
   opencv_core opencv_imgcodecs
 )

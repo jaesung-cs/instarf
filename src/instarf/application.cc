@@ -10,10 +10,15 @@
 
 #include <glm/glm.hpp>
 
+#include <imgui.h>
+#include <imgui_impl_glfw.h>
+#include <imgui_impl_vulkan.h>
+
 #include <instarf/engine.h>
 #include <instarf/swapchain.h>
 #include <instarf/attachment.h>
 #include <instarf/render_pass.h>
+#include <instarf/render_pass_ui.h>
 #include <instarf/framebuffer.h>
 #include <instarf/descriptor_layout.h>
 #include <instarf/pipeline_layout.h>
@@ -23,6 +28,13 @@
 #include <instarf/shader/camera_ubo.h>
 
 namespace instarf {
+namespace {
+void checkVkResult(VkResult err) {
+  if (err == 0) return;
+  std::cerr << "[vulkan] Error: VkResult = err" << std::endl;
+  if (err < 0) abort();
+}
+}  // namespace
 
 Application::Application() {
   if (glfwInit() != GLFW_TRUE) throw std::runtime_error("Failed to init glfw");
@@ -57,6 +69,7 @@ void Application::run() {
                              VK_SAMPLE_COUNT_4_BIT);
 
   RenderPass renderPass(engine);
+  RenderPassUi renderPassUi(engine);
 
   FramebufferInfo framebufferInfo;
   framebufferInfo.renderPass = renderPass;
@@ -66,6 +79,12 @@ void Application::run() {
       {swapchain.imageUsage(), swapchain.format()},
   };
   Framebuffer framebuffer(engine, framebufferInfo);
+
+  framebufferInfo.renderPass = renderPassUi;
+  framebufferInfo.imageInfos = {
+      {swapchain.imageUsage(), swapchain.format()},
+  };
+  Framebuffer framebufferUi(engine, framebufferInfo);
 
   DescriptorLayoutInfo descriptorLayoutInfo;
   descriptorLayoutInfo.bindings = {
@@ -105,8 +124,54 @@ void Application::run() {
   Descriptor cameraDescriptor(engine, cameraLayout);
   cameraDescriptor.bind(0, cameraBuffer);
 
+  // ImGui
+  IMGUI_CHECKVERSION();
+  ImGui::CreateContext();
+  ImGuiIO& io = ImGui::GetIO();
+  io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
+
+  ImGui::StyleColorsDark();
+
+  // Tweak WindowRounding/WindowBg so platform windows can look identical to
+  // regular ones
+  ImGuiStyle& style = ImGui::GetStyle();
+  style.WindowRounding = 0.0f;
+  style.Colors[ImGuiCol_WindowBg].w = 1.0f;
+
+  ImGui_ImplGlfw_InitForVulkan(window_, true);
+  ImGui_ImplVulkan_InitInfo initInfo = {};
+  initInfo.Instance = engine.instance();
+  initInfo.PhysicalDevice = engine.physicalDevice();
+  initInfo.Device = engine.device();
+  initInfo.QueueFamily = engine.queueIndex();
+  initInfo.Queue = engine.queue();
+  initInfo.PipelineCache = nullptr;
+  initInfo.DescriptorPool = engine.descriptorPool();
+  initInfo.Allocator = nullptr;
+  initInfo.MinImageCount = swapchain.imageCount();
+  initInfo.ImageCount = swapchain.imageCount();
+  initInfo.MSAASamples = VK_SAMPLE_COUNT_1_BIT;
+  initInfo.Subpass = 0;
+  initInfo.CheckVkResultFn = checkVkResult;
+  ImGui_ImplVulkan_Init(&initInfo, renderPassUi);
+
+  // Upload Fonts
+  engine.submit([](VkCommandBuffer cb) {
+    VkCommandBufferBeginInfo beginInfo = {
+        VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
+    beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+    vkBeginCommandBuffer(cb, &beginInfo);
+    ImGui_ImplVulkan_CreateFontsTexture(cb);
+    vkEndCommandBuffer(cb);
+  });
+
+  engine.waitIdle();
+  ImGui_ImplVulkan_DestroyFontUploadObjects();
+
   while (!glfwWindowShouldClose(window_)) {
     glfwPollEvents();
+
+    ImGuiIO& io = ImGui::GetIO();
 
     int width, height;
     glfwGetFramebufferSize(window_, &width, &height);
@@ -118,9 +183,22 @@ void Application::run() {
       colorAttachment.resize(width, height);
       depthAttachment.resize(width, height);
       framebuffer.resize(width, height);
+      framebufferUi.resize(width, height);
     }
 
     if (swapchain.begin()) {
+      // Start the Dear ImGui frame
+      ImGui_ImplVulkan_NewFrame();
+      ImGui_ImplGlfw_NewFrame();
+      ImGui::NewFrame();
+
+      if (ImGui::Begin("instarf")) {
+        ImGui::Text("FPS: %lf", io.Framerate);
+      }
+      ImGui::End();
+
+      ImGui::Render();
+
       auto cb = swapchain.commandBuffer();
       auto imageIndex = swapchain.imageIndex();
 
@@ -185,15 +263,35 @@ void Application::run() {
 
       vkCmdEndRenderPass(cb);
 
+      // UI render pass
+      attachments = {swapchain.imageView()};
+      renderPassAttachments.attachmentCount = attachments.size();
+      renderPassAttachments.pAttachments = attachments.data();
+      renderPassBeginInfo.renderPass = renderPassUi;
+      renderPassBeginInfo.framebuffer = framebufferUi;
+      renderPassBeginInfo.clearValueCount = 0;
+      vkCmdBeginRenderPass(cb, &renderPassBeginInfo,
+                           VK_SUBPASS_CONTENTS_INLINE);
+      ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), cb);
+      vkCmdEndRenderPass(cb);
+
       vkEndCommandBuffer(cb);
 
       swapchain.end();
     } else {
       std::cout << "Swapchain lost" << std::endl;
     }
+
+    ImGui::UpdatePlatformWindows();
+    ImGui::RenderPlatformWindowsDefault();
   }
 
   engine.waitIdle();
+
+  ImGui_ImplVulkan_Shutdown();
+  ImGui_ImplGlfw_Shutdown();
+  ImGui::DestroyContext();
+
   glfwDestroyWindow(window_);
 }
 

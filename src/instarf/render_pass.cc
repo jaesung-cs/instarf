@@ -39,7 +39,7 @@ public:
     attachments[2].loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
     attachments[2].storeOp = VK_ATTACHMENT_STORE_OP_STORE;
     attachments[2].initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-    attachments[2].finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+    attachments[2].finalLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
     VkAttachmentReference colorAttachment = {
         0, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL};

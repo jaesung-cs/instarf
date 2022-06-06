@@ -4,6 +4,7 @@
 #include <memory>
 #include <vector>
 #include <string>
+#include <functional>
 
 #include <vulkan/vulkan.h>
 
@@ -16,6 +17,9 @@ struct EngineInfo {
 };
 
 class Engine {
+protected:
+  using CommandRecordFunc = std::function<void(VkCommandBuffer)>;
+
 public:
   Engine() = default;
   explicit Engine(const EngineInfo& createInfo);
@@ -29,6 +33,7 @@ public:
   VmaAllocator allocator() const;
   VkDescriptorPool descriptorPool() const;
 
+  void submit(CommandRecordFunc command);
   void waitIdle();
 
 private:
