@@ -7,6 +7,8 @@
 
 #include <vulkan/vulkan.h>
 
+#include "vk_mem_alloc.h"
+
 namespace instarf {
 
 struct EngineCreateInfo {
@@ -23,6 +25,7 @@ public:
   VkDevice device() const;
   int queueIndex() const;
   VkQueue queue() const;
+  VmaAllocator allocator() const;
 
 private:
   class Impl;

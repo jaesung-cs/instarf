@@ -10,6 +10,7 @@
 
 #include <instarf/engine.h>
 #include <instarf/swapchain.h>
+#include <instarf/attachment.h>
 #include <instarf/render_pass.h>
 
 namespace instarf {
@@ -40,22 +41,26 @@ void Application::run() {
   VkSurfaceKHR surface;
   glfwCreateWindowSurface(instance, window_, nullptr, &surface);
 
-  int width, height;
-  glfwGetFramebufferSize(window_, &width, &height);
   Swapchain swapchain(engine, surface);
+  Attachment colorAttachment(engine, VK_FORMAT_B8G8R8A8_UNORM,
+                             VK_SAMPLE_COUNT_4_BIT);
+  Attachment depthAttachment(engine, VK_FORMAT_D32_SFLOAT,
+                             VK_SAMPLE_COUNT_4_BIT);
 
   RenderPass renderPass(engine);
 
   while (!glfwWindowShouldClose(window_)) {
     glfwPollEvents();
 
+    int width, height;
     glfwGetFramebufferSize(window_, &width, &height);
 
     // Minimized
     if (width == 0 || height == 0) continue;
 
     if (swapchain.resize(width, height)) {
-      // TODO: update swapchain-dependent resources
+      colorAttachment.resize(width, height);
+      depthAttachment.resize(width, height);
     }
 
     if (swapchain.begin()) {

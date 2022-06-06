@@ -1,7 +1,6 @@
 #include <instarf/engine.h>
 
 #include <iostream>
-#include <vector>
 
 namespace instarf {
 namespace {
@@ -146,6 +145,15 @@ public:
     vkCreateDevice(physicalDevice_, &deviceInfo, nullptr, &device_);
 
     vkGetDeviceQueue(device_, queueIndex_, 0, &queue_);
+
+    // Allocator
+    VmaAllocatorCreateInfo allocatorInfo = {};
+    allocatorInfo.flags = VMA_ALLOCATOR_CREATE_KHR_DEDICATED_ALLOCATION_BIT;
+    allocatorInfo.physicalDevice = physicalDevice_;
+    allocatorInfo.device = device_;
+    allocatorInfo.instance = instance_;
+    allocatorInfo.vulkanApiVersion = applicationInfo.apiVersion;
+    vmaCreateAllocator(&allocatorInfo, &allocator_);
   }
 
   ~Impl() {
@@ -159,6 +167,7 @@ public:
   auto device() const noexcept { return device_; }
   auto queueIndex() const noexcept { return queueIndex_; }
   auto queue() const noexcept { return queue_; }
+  auto allocator() const noexcept { return allocator_; }
 
 private:
   VkInstance instance_;
@@ -168,6 +177,8 @@ private:
   VkDevice device_;
   int queueIndex_ = -1;
   VkQueue queue_;
+
+  VmaAllocator allocator_;
 };
 
 Engine::Engine(const EngineCreateInfo& createInfo)
@@ -177,5 +188,6 @@ VkInstance Engine::instance() const { return impl_->instance(); }
 VkDevice Engine::device() const { return impl_->device(); }
 int Engine::queueIndex() const { return impl_->queueIndex(); }
 VkQueue Engine::queue() const { return impl_->queue(); }
+VmaAllocator Engine::allocator() const { return impl_->allocator(); }
 
 }  // namespace instarf
