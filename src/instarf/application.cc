@@ -14,6 +14,7 @@
 #include <imgui_impl_glfw.h>
 #include <imgui_impl_vulkan.h>
 
+#include <instarf/camera.h>
 #include <instarf/engine.h>
 #include <instarf/swapchain.h>
 #include <instarf/attachment.h>
@@ -25,6 +26,7 @@
 #include <instarf/graphics_pipeline.h>
 #include <instarf/descriptor.h>
 #include <instarf/uniform_buffer.h>
+#include <instarf/buffer.h>
 #include <instarf/shader/camera_ubo.h>
 
 namespace instarf {
@@ -124,6 +126,12 @@ void Application::run() {
   Descriptor cameraDescriptor(engine, cameraLayout);
   cameraDescriptor.bind(0, cameraBuffer);
 
+  VertexBuffer<float> linesVertex(
+      engine, {0.f, 0.f, 0.f, 1.f, 0.f, 0.f, 1.f, 0.f, 0.f, 1.f, 0.f, 0.f,
+               0.f, 0.f, 0.f, 0.f, 1.f, 0.f, 0.f, 1.f, 0.f, 0.f, 1.f, 0.f,
+               0.f, 0.f, 0.f, 0.f, 0.f, 1.f, 0.f, 0.f, 1.f, 0.f, 0.f, 1.f});
+  IndexBuffer linesIndex(engine, {0, 1, 2, 3, 4, 5});
+
   // ImGui
   IMGUI_CHECKVERSION();
   ImGui::CreateContext();
@@ -168,16 +176,38 @@ void Application::run() {
   engine.waitIdle();
   ImGui_ImplVulkan_DestroyFontUploadObjects();
 
+  Camera camera;
+
   while (!glfwWindowShouldClose(window_)) {
     glfwPollEvents();
 
     ImGuiIO& io = ImGui::GetIO();
+
+    if (!io.WantCaptureMouse) {
+      if (io.MouseDown[0] && !io.MouseDown[1])
+        camera.rotateByPixels(io.MouseDelta.x, io.MouseDelta.y);
+      else if (!io.MouseDown[0] && io.MouseDown[1])
+        camera.translateByPixels(io.MouseDelta.x, io.MouseDelta.y);
+      camera.zoomByScroll(io.MouseWheel);
+    }
+
+    if (!io.WantCaptureKeyboard) {
+      constexpr float movingSpeed = 1.f;
+      auto dx = camera.radius() * io.DeltaTime * movingSpeed;
+      if (io.KeysDown['W']) camera.moveForward(dx);
+      if (io.KeysDown['A']) camera.moveRight(-dx);
+      if (io.KeysDown['S']) camera.moveForward(-dx);
+      if (io.KeysDown['D']) camera.moveRight(dx);
+      if (io.KeysDown[' ']) camera.moveUp(dx);
+    }
 
     int width, height;
     glfwGetFramebufferSize(window_, &width, &height);
 
     // Minimized
     if (width == 0 || height == 0) continue;
+
+    camera.setScreenSize(width, height);
 
     if (swapchain.resize(width, height)) {
       colorAttachment.resize(width, height);
@@ -214,9 +244,9 @@ void Application::run() {
           {static_cast<uint32_t>(width), static_cast<uint32_t>(height)}};
 
       std::vector<VkClearValue> clearValues(2);
-      clearValues[0].color.float32[0] = 1.f;
-      clearValues[0].color.float32[1] = 0.f;
-      clearValues[0].color.float32[2] = 0.f;
+      clearValues[0].color.float32[0] = 0.75f;
+      clearValues[0].color.float32[1] = 0.75f;
+      clearValues[0].color.float32[2] = 0.75f;
       clearValues[0].color.float32[3] = 1.f;
       clearValues[1].depthStencil.depth = 1.f;
       clearValues[1].depthStencil.stencil = 0;
@@ -244,8 +274,10 @@ void Application::run() {
 
       vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, colorPipeline);
 
-      cameraBuffer[imageIndex].projection = glm::mat4(1.f);
-      cameraBuffer[imageIndex].view = glm::mat4(1.f);
+      glm::mat4 flip(1.f);
+      flip[1][1] = -1.f;
+      cameraBuffer[imageIndex].projection = flip * camera.projection();
+      cameraBuffer[imageIndex].view = camera.view();
 
       std::vector<VkDescriptorSet> descriptors = {cameraDescriptor};
       std::vector<uint32_t> offsets = {cameraBuffer.offset(imageIndex)};
@@ -260,6 +292,13 @@ void Application::run() {
       model.model = glm::mat4(1.f);
       vkCmdPushConstants(cb, pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0,
                          sizeof(model), &model);
+
+      std::vector<VkBuffer> vertexBuffers = {linesVertex};
+      std::vector<VkDeviceSize> vertexOffsets = {0};
+      vkCmdBindVertexBuffers(cb, 0, vertexBuffers.size(), vertexBuffers.data(),
+                             vertexOffsets.data());
+      vkCmdBindIndexBuffer(cb, linesIndex, 0, VK_INDEX_TYPE_UINT32);
+      vkCmdDrawIndexed(cb, linesIndex.size(), 1, 0, 0, 0);
 
       vkCmdEndRenderPass(cb);
 
