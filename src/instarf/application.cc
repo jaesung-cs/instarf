@@ -12,6 +12,7 @@
 #include <instarf/swapchain.h>
 #include <instarf/attachment.h>
 #include <instarf/render_pass.h>
+#include <instarf/framebuffer.h>
 
 namespace instarf {
 
@@ -46,6 +47,14 @@ void Application::run() {
                              VK_SAMPLE_COUNT_4_BIT);
   Attachment depthAttachment(engine, VK_FORMAT_D32_SFLOAT,
                              VK_SAMPLE_COUNT_4_BIT);
+
+  FramebufferCreateInfo framebufferInfo;
+  framebufferInfo.imageInfos = {
+      {colorAttachment.usage(), colorAttachment.format()},
+      {depthAttachment.usage(), depthAttachment.format()},
+      {swapchain.imageUsage(), swapchain.format()},
+  };
+  Framebuffer framebuffer(engine, framebufferInfo);
 
   RenderPass renderPass(engine);
 

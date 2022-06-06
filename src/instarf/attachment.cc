@@ -62,6 +62,9 @@ public:
     }
   }
 
+  auto usage() const noexcept { return imageInfo_.usage; }
+  auto format() const noexcept { return imageInfo_.format; }
+
   void resize(uint32_t width, uint32_t height) {
     if (imageInfo_.extent.width != width ||
         imageInfo_.extent.height != height) {
@@ -95,7 +98,10 @@ private:
 
 Attachment::Attachment(Engine engine, VkFormat format,
                        VkSampleCountFlagBits samples)
-    : impl_(std::make_shared<Impl>(engine,format,samples)) {}
+    : impl_(std::make_shared<Impl>(engine, format, samples)) {}
+
+VkImageUsageFlags Attachment::usage() const { return impl_->usage(); }
+VkFormat Attachment::format() const { return impl_->format(); }
 
 void Attachment::resize(uint32_t width, uint32_t height) {
   impl_->resize(width, height);

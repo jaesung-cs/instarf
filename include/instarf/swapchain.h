@@ -16,6 +16,8 @@ public:
   ~Swapchain() = default;
 
   uint32_t imageCount() const;
+  VkImageUsageFlags imageUsage() const;
+  VkFormat format() const;
 
   bool resize(uint32_t width, uint32_t height);
 

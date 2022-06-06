@@ -88,6 +88,8 @@ public:
   }
 
   auto imageCount() const noexcept { return imageCount_; }
+  auto imageUsage() const noexcept { return swapchainInfo_.imageUsage; }
+  auto format() const noexcept { return swapchainInfo_.imageFormat; }
 
   bool resize(uint32_t width, uint32_t height) {
     if (swapchainInfo_.imageExtent.width != width ||
@@ -236,6 +238,8 @@ Swapchain::Swapchain(Engine engine, VkSurfaceKHR surface)
     : impl_(std::make_shared<Impl>(engine, surface)) {}
 
 uint32_t Swapchain::imageCount() const { return impl_->imageCount(); }
+VkImageUsageFlags Swapchain::imageUsage() const { return impl_->imageUsage(); }
+VkFormat Swapchain::format() const { return impl_->format(); }
 
 bool Swapchain::resize(uint32_t width, uint32_t height) {
   return impl_->resize(width, height);

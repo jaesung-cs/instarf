@@ -16,6 +16,9 @@ public:
                       VkSampleCountFlagBits samples);
   ~Attachment() = default;
 
+  VkImageUsageFlags usage() const;
+  VkFormat format() const;
+
   void resize(uint32_t width, uint32_t height);
 
 private:
