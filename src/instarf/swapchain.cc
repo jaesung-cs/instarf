@@ -147,6 +147,7 @@ public:
 
   auto imageIndex() noexcept { return imageIndex_; }
   auto image() { return images_[imageIndex_]; }
+  auto imageView() { return imageViews_[imageIndex_]; }
   auto commandBuffer() { return commandBuffers_[imageIndex_]; }
 
   void end() {
@@ -248,6 +249,7 @@ bool Swapchain::resize(uint32_t width, uint32_t height) {
 bool Swapchain::begin() { return impl_->begin(); }
 uint32_t Swapchain::imageIndex() { return impl_->imageIndex(); }
 VkImage Swapchain::image() { return impl_->image(); }
+VkImageView Swapchain::imageView() { return impl_->imageView(); }
 VkCommandBuffer Swapchain::commandBuffer() { return impl_->commandBuffer(); }
 void Swapchain::end() { impl_->end(); }
 

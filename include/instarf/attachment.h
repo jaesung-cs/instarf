@@ -15,6 +15,8 @@ public:
   explicit Attachment(Engine engine, VkFormat format,
                       VkSampleCountFlagBits samples);
   ~Attachment() = default;
+  
+  operator VkImageView() const;
 
   VkImageUsageFlags usage() const;
   VkFormat format() const;

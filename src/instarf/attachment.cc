@@ -62,6 +62,7 @@ public:
     }
   }
 
+  operator VkImageView() const noexcept { return imageView_; }
   auto usage() const noexcept { return imageInfo_.usage; }
   auto format() const noexcept { return imageInfo_.format; }
 
@@ -99,6 +100,8 @@ private:
 Attachment::Attachment(Engine engine, VkFormat format,
                        VkSampleCountFlagBits samples)
     : impl_(std::make_shared<Impl>(engine, format, samples)) {}
+
+Attachment::operator VkImageView() const { return *impl_; }
 
 VkImageUsageFlags Attachment::usage() const { return impl_->usage(); }
 VkFormat Attachment::format() const { return impl_->format(); }

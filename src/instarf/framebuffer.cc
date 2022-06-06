@@ -8,15 +8,14 @@ class Framebuffer::Impl {
 public:
   Impl() = delete;
 
-  Impl(Engine engine, const FramebufferInfo& createInfo)
-      : engine_(engine) {
+  Impl(Engine engine, const FramebufferInfo& createInfo) : engine_(engine) {
     const auto& imageInfos = createInfo.imageInfos;
     formats_.resize(imageInfos.size());
     imageInfos_.resize(imageInfos.size());
     for (int i = 0; i < imageInfos.size(); i++) {
       formats_[i] = imageInfos[i].format;
 
-      imageInfos_[i] = {VK_STRUCTURE_TYPE_FRAMEBUFFER_ATTACHMENTS_CREATE_INFO};
+      imageInfos_[i] = {VK_STRUCTURE_TYPE_FRAMEBUFFER_ATTACHMENT_IMAGE_INFO};
       imageInfos_[i].usage = imageInfos[i].usage;
       imageInfos_[i].layerCount = 1;
       imageInfos_[i].viewFormatCount = 1;
@@ -30,8 +29,8 @@ public:
     framebufferInfo_ = {VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO};
     framebufferInfo_.pNext = &attachmentsInfo_;
     framebufferInfo_.flags = VK_FRAMEBUFFER_CREATE_IMAGELESS_BIT;
-    framebufferInfo_.renderPass;
-    framebufferInfo_.attachmentCount;
+    framebufferInfo_.renderPass = createInfo.renderPass;
+    framebufferInfo_.attachmentCount = imageInfos.size();
     framebufferInfo_.layers = 1;
   }
 
@@ -41,6 +40,8 @@ public:
       vkDestroyFramebuffer(device, framebuffer_, nullptr);
     }
   }
+
+  operator VkFramebuffer() const noexcept { return framebuffer_; }
 
   void resize(uint32_t width, uint32_t height) {
     if (framebufferInfo_.width != width || framebufferInfo_.height != height) {
@@ -70,6 +71,8 @@ private:
 
 Framebuffer::Framebuffer(Engine engine, const FramebufferInfo& createInfo)
     : impl_(std::make_shared<Impl>(engine, createInfo)) {}
+
+Framebuffer::operator VkFramebuffer() const { return *impl_; }
 
 void Framebuffer::resize(uint32_t width, uint32_t height) {
   impl_->resize(width, height);

@@ -169,6 +169,8 @@ public:
   auto queue() const noexcept { return queue_; }
   auto allocator() const noexcept { return allocator_; }
 
+  void waitIdle() { vkDeviceWaitIdle(device_); }
+
 private:
   VkInstance instance_;
   VkDebugUtilsMessengerEXT messenger_;
@@ -189,5 +191,7 @@ VkDevice Engine::device() const { return impl_->device(); }
 int Engine::queueIndex() const { return impl_->queueIndex(); }
 VkQueue Engine::queue() const { return impl_->queue(); }
 VmaAllocator Engine::allocator() const { return impl_->allocator(); }
+
+void Engine::waitIdle() { impl_->waitIdle(); }
 
 }  // namespace instarf

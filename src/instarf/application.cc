@@ -8,11 +8,16 @@
 
 #include <vulkan/vulkan.h>
 
+#include <glm/glm.hpp>
+
 #include <instarf/engine.h>
 #include <instarf/swapchain.h>
 #include <instarf/attachment.h>
 #include <instarf/render_pass.h>
 #include <instarf/framebuffer.h>
+#include <instarf/descriptor_layout.h>
+#include <instarf/pipeline_layout.h>
+#include <instarf/graphics_pipeline.h>
 
 namespace instarf {
 
@@ -48,7 +53,10 @@ void Application::run() {
   Attachment depthAttachment(engine, VK_FORMAT_D32_SFLOAT,
                              VK_SAMPLE_COUNT_4_BIT);
 
+  RenderPass renderPass(engine);
+
   FramebufferInfo framebufferInfo;
+  framebufferInfo.renderPass = renderPass;
   framebufferInfo.imageInfos = {
       {colorAttachment.usage(), colorAttachment.format()},
       {depthAttachment.usage(), depthAttachment.format()},
@@ -56,7 +64,38 @@ void Application::run() {
   };
   Framebuffer framebuffer(engine, framebufferInfo);
 
-  RenderPass renderPass(engine);
+  DescriptorLayoutInfo descriptorLayoutInfo;
+  descriptorLayoutInfo.bindings = {
+      {0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,
+       VK_SHADER_STAGE_VERTEX_BIT},
+  };
+  DescriptorLayout cameraLayout(engine, descriptorLayoutInfo);
+
+  PipelineLayoutInfo pipelineLayoutInfo;
+  pipelineLayoutInfo.layouts = {
+      cameraLayout,
+  };
+  pipelineLayoutInfo.pushConstantRanges = {
+      {VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(glm::mat4)},
+  };
+  PipelineLayout pipelineLayout(engine, pipelineLayoutInfo);
+
+  GraphicsPipelineInfo pipelineInfo;
+  pipelineInfo.directory = "C:\\workspace\\instarf\\assets\\shaders";
+  pipelineInfo.name = "color";
+  pipelineInfo.bindings = {
+      {0, sizeof(float) * 6, VK_VERTEX_INPUT_RATE_VERTEX},
+  };
+  pipelineInfo.attributes = {
+      {0, 0, VK_FORMAT_R32G32B32_SFLOAT, 0},
+      {1, 0, VK_FORMAT_R32G32B32_SFLOAT, sizeof(float) * 3},
+  };
+  pipelineInfo.topology = VK_PRIMITIVE_TOPOLOGY_LINE_LIST;
+  pipelineInfo.samples = VK_SAMPLE_COUNT_4_BIT;
+  pipelineInfo.layout = pipelineLayout;
+  pipelineInfo.renderPass = renderPass;
+  pipelineInfo.subpass = 0;
+  GraphicsPipeline colorPipeline(engine, pipelineInfo);
 
   while (!glfwWindowShouldClose(window_)) {
     glfwPollEvents();
@@ -70,6 +109,7 @@ void Application::run() {
     if (swapchain.resize(width, height)) {
       colorAttachment.resize(width, height);
       depthAttachment.resize(width, height);
+      framebuffer.resize(width, height);
     }
 
     if (swapchain.begin()) {
@@ -80,39 +120,52 @@ void Application::run() {
           VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
       vkBeginCommandBuffer(cb, &beginInfo);
 
-      // TODO: draw
-      VkImageMemoryBarrier2 barrier = {
-          VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2};
-      barrier.srcStageMask = VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT;
-      barrier.srcAccessMask = 0;
-      barrier.dstStageMask = VK_PIPELINE_STAGE_2_TRANSFER_BIT;
-      barrier.dstAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT;
-      barrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-      barrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-      barrier.image = image;
-      barrier.subresourceRange = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
+      VkViewport viewport = {
+          0.f, 0.f, static_cast<float>(width), static_cast<float>(height),
+          0.f, 1.f};
+      VkRect2D scissor = {
+          {0, 0},
+          {static_cast<uint32_t>(width), static_cast<uint32_t>(height)}};
 
-      VkDependencyInfo dependency = {VK_STRUCTURE_TYPE_DEPENDENCY_INFO};
-      dependency.imageMemoryBarrierCount = 1;
-      dependency.pImageMemoryBarriers = &barrier;
-      vkCmdPipelineBarrier2(cb, &dependency);
+      std::vector<VkClearValue> clearValues(2);
+      clearValues[0].color.float32[0] = 1.f;
+      clearValues[0].color.float32[1] = 0.f;
+      clearValues[0].color.float32[2] = 0.f;
+      clearValues[0].color.float32[3] = 1.f;
+      clearValues[1].depthStencil.depth = 1.f;
+      clearValues[1].depthStencil.stencil = 0;
 
-      VkClearColorValue clearColor;
-      clearColor.float32[0] = 1.f;
-      clearColor.float32[1] = 0.f;
-      clearColor.float32[2] = 0.f;
-      clearColor.float32[3] = 1.f;
-      VkImageSubresourceRange range = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
-      vkCmdClearColorImage(cb, image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-                           &clearColor, 1, &range);
+      std::vector<VkImageView> attachments = {colorAttachment, depthAttachment,
+                                              swapchain.imageView()};
+      VkRenderPassAttachmentBeginInfo renderPassAttachments = {
+          VK_STRUCTURE_TYPE_RENDER_PASS_ATTACHMENT_BEGIN_INFO};
+      renderPassAttachments.attachmentCount = attachments.size();
+      renderPassAttachments.pAttachments = attachments.data();
 
-      barrier.srcStageMask = VK_PIPELINE_STAGE_2_TRANSFER_BIT;
-      barrier.srcAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT;
-      barrier.dstStageMask = VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT;
-      barrier.dstAccessMask = 0;
-      barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-      barrier.newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-      vkCmdPipelineBarrier2(cb, &dependency);
+      VkRenderPassBeginInfo renderPassBeginInfo = {
+          VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO};
+      renderPassBeginInfo.pNext = &renderPassAttachments;
+      renderPassBeginInfo.renderPass = renderPass;
+      renderPassBeginInfo.framebuffer = framebuffer;
+      renderPassBeginInfo.renderArea = scissor;
+      renderPassBeginInfo.clearValueCount = clearValues.size();
+      renderPassBeginInfo.pClearValues = clearValues.data();
+      vkCmdBeginRenderPass(cb, &renderPassBeginInfo,
+                           VK_SUBPASS_CONTENTS_INLINE);
+
+      vkCmdSetViewport(cb, 0, 1, &viewport);
+      vkCmdSetScissor(cb, 0, 1, &scissor);
+
+      vkCmdBindPipeline(cb, VK_PIPELINE_BIND_POINT_GRAPHICS, colorPipeline);
+
+      struct ModelPush {
+        glm::mat4 model;
+      } model;
+      model.model = glm::mat4(1.f);
+      vkCmdPushConstants(cb, pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0,
+                         sizeof(model), &model);
+
+      vkCmdEndRenderPass(cb);
 
       vkEndCommandBuffer(cb);
 
@@ -122,6 +175,7 @@ void Application::run() {
     }
   }
 
+  engine.waitIdle();
   glfwDestroyWindow(window_);
 }
 

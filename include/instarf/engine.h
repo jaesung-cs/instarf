@@ -27,6 +27,8 @@ public:
   VkQueue queue() const;
   VmaAllocator allocator() const;
 
+  void waitIdle();
+
 private:
   class Impl;
   std::shared_ptr<Impl> impl_;

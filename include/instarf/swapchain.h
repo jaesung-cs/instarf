@@ -24,6 +24,7 @@ public:
   bool begin();
   uint32_t imageIndex();
   VkImage image();
+  VkImageView imageView();
   VkCommandBuffer commandBuffer();
   void end();
 
