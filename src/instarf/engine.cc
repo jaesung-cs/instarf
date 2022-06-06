@@ -136,6 +136,8 @@ Engine::Engine(const EngineCreateInfo& engineInfo) {
   deviceInfo.ppEnabledExtensionNames = deviceExtensions.data();
   deviceInfo.pEnabledFeatures = NULL;
   vkCreateDevice(physicalDevice_, &deviceInfo, nullptr, &device_);
+
+  vkGetDeviceQueue(device_, queueIndex_, 0, &queue_);
 }
 
 Engine::~Engine() {

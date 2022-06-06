@@ -20,6 +20,7 @@ public:
 
   auto instance() const noexcept { return instance_; }
   auto device() const noexcept { return device_; }
+  auto queueIndex() const noexcept { return queueIndex_; }
   auto queue() const noexcept { return queue_; }
 
 private:
