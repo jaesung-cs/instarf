@@ -10,6 +10,7 @@
 
 #include <instarf/engine.h>
 #include <instarf/swapchain.h>
+#include <instarf/render_pass.h>
 
 namespace instarf {
 
@@ -42,6 +43,8 @@ void Application::run() {
   int width, height;
   glfwGetFramebufferSize(window_, &width, &height);
   Swapchain swapchain(engine, surface);
+
+  RenderPass renderPass(engine);
 
   while (!glfwWindowShouldClose(window_)) {
     glfwPollEvents();
