@@ -1,6 +1,7 @@
 #ifndef INSTARF_ENGINE_H
 #define INSTARF_ENGINE_H
 
+#include <memory>
 #include <vector>
 #include <string>
 
@@ -14,23 +15,18 @@ struct EngineCreateInfo {
 
 class Engine {
 public:
-  Engine() = delete;
-  explicit Engine(const EngineCreateInfo& engineInfo);
-  ~Engine();
+  Engine() = default;
+  explicit Engine(const EngineCreateInfo& createInfo);
+  ~Engine() = default;
 
-  auto instance() const noexcept { return instance_; }
-  auto device() const noexcept { return device_; }
-  auto queueIndex() const noexcept { return queueIndex_; }
-  auto queue() const noexcept { return queue_; }
+  VkInstance instance() const;
+  VkDevice device() const;
+  int queueIndex() const;
+  VkQueue queue() const;
 
 private:
-  VkInstance instance_;
-  VkDebugUtilsMessengerEXT messenger_;
-
-  VkPhysicalDevice physicalDevice_;
-  VkDevice device_;
-  int queueIndex_ = -1;
-  VkQueue queue_;
+  class Impl;
+  std::shared_ptr<Impl> impl_;
 };
 
 }  // namespace instarf

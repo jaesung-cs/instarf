@@ -36,115 +36,146 @@ void destroyDebugUtilsMessengerEXT(VkInstance instance,
 }
 }  // namespace
 
-Engine::Engine(const EngineCreateInfo& engineInfo) {
-  // Instance
-  VkApplicationInfo applicationInfo = {VK_STRUCTURE_TYPE_APPLICATION_INFO};
-  applicationInfo.pApplicationName = "instarf viewer";
-  applicationInfo.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
-  applicationInfo.pEngineName = "instarf";
-  applicationInfo.engineVersion = VK_MAKE_VERSION(1, 0, 0);
-  applicationInfo.apiVersion = VK_API_VERSION_1_3;
+class Engine::Impl {
+public:
+  Impl() = delete;
 
-  std::vector<const char*> instanceLayers;
-  instanceLayers.push_back("VK_LAYER_KHRONOS_validation");
+  Impl(const EngineCreateInfo& createInfo) {
+    // Instance
+    VkApplicationInfo applicationInfo = {VK_STRUCTURE_TYPE_APPLICATION_INFO};
+    applicationInfo.pApplicationName = "instarf viewer";
+    applicationInfo.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
+    applicationInfo.pEngineName = "instarf";
+    applicationInfo.engineVersion = VK_MAKE_VERSION(1, 0, 0);
+    applicationInfo.apiVersion = VK_API_VERSION_1_3;
 
-  std::vector<const char*> instanceExtensions;
-  instanceExtensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
-  for (const auto& extension : engineInfo.instanceExtensions)
-    instanceExtensions.push_back(extension.c_str());
+    std::vector<const char*> instanceLayers;
+    instanceLayers.push_back("VK_LAYER_KHRONOS_validation");
 
-  VkInstanceCreateInfo instanceInfo = {VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO};
-  instanceInfo.pApplicationInfo = &applicationInfo;
-  instanceInfo.enabledLayerCount = static_cast<uint32_t>(instanceLayers.size());
-  instanceInfo.ppEnabledLayerNames = instanceLayers.data();
-  instanceInfo.enabledExtensionCount =
-      static_cast<uint32_t>(instanceExtensions.size());
-  instanceInfo.ppEnabledExtensionNames = instanceExtensions.data();
-  vkCreateInstance(&instanceInfo, nullptr, &instance_);
+    std::vector<const char*> instanceExtensions;
+    instanceExtensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
+    for (const auto& extension : createInfo.instanceExtensions)
+      instanceExtensions.push_back(extension.c_str());
 
-  VkDebugUtilsMessengerCreateInfoEXT messengerInfo = {
-      VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT};
-  messengerInfo.messageSeverity =
-      VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT |
-      VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
-  messengerInfo.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT |
-                              VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT |
-                              VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
-  messengerInfo.pfnUserCallback = debugCallback;
-  messengerInfo.pUserData = nullptr;
-  createDebugUtilsMessengerEXT(instance_, &messengerInfo, nullptr, &messenger_);
+    VkInstanceCreateInfo instanceInfo = {
+        VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO};
+    instanceInfo.pApplicationInfo = &applicationInfo;
+    instanceInfo.enabledLayerCount =
+        static_cast<uint32_t>(instanceLayers.size());
+    instanceInfo.ppEnabledLayerNames = instanceLayers.data();
+    instanceInfo.enabledExtensionCount =
+        static_cast<uint32_t>(instanceExtensions.size());
+    instanceInfo.ppEnabledExtensionNames = instanceExtensions.data();
+    vkCreateInstance(&instanceInfo, nullptr, &instance_);
 
-  // Physical device
-  uint32_t physicalDeviceCount;
-  vkEnumeratePhysicalDevices(instance_, &physicalDeviceCount, nullptr);
-  std::vector<VkPhysicalDevice> physicalDevices(physicalDeviceCount);
-  vkEnumeratePhysicalDevices(instance_, &physicalDeviceCount,
-                             physicalDevices.data());
+    VkDebugUtilsMessengerCreateInfoEXT messengerInfo = {
+        VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT};
+    messengerInfo.messageSeverity =
+        VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT |
+        VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
+    messengerInfo.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT |
+                                VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT |
+                                VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
+    messengerInfo.pfnUserCallback = debugCallback;
+    messengerInfo.pUserData = nullptr;
+    createDebugUtilsMessengerEXT(instance_, &messengerInfo, nullptr,
+                                 &messenger_);
 
-  physicalDevice_ = physicalDevices[0];
+    // Physical device
+    uint32_t physicalDeviceCount;
+    vkEnumeratePhysicalDevices(instance_, &physicalDeviceCount, nullptr);
+    std::vector<VkPhysicalDevice> physicalDevices(physicalDeviceCount);
+    vkEnumeratePhysicalDevices(instance_, &physicalDeviceCount,
+                               physicalDevices.data());
 
-  // Device
-  VkPhysicalDeviceSynchronization2Features synchronization2 = {
-      VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SYNCHRONIZATION_2_FEATURES};
+    physicalDevice_ = physicalDevices[0];
 
-  VkPhysicalDeviceImagelessFramebufferFeatures imagelessFramebuffer = {
-      VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGELESS_FRAMEBUFFER_FEATURES};
-  imagelessFramebuffer.pNext = &synchronization2;
+    // Device
+    VkPhysicalDeviceSynchronization2Features synchronization2 = {
+        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SYNCHRONIZATION_2_FEATURES};
 
-  VkPhysicalDeviceFeatures2 features = {
-      VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2};
-  features.pNext = &imagelessFramebuffer;
-  vkGetPhysicalDeviceFeatures2(physicalDevice_, &features);
+    VkPhysicalDeviceImagelessFramebufferFeatures imagelessFramebuffer = {
+        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGELESS_FRAMEBUFFER_FEATURES};
+    imagelessFramebuffer.pNext = &synchronization2;
 
-  uint32_t queueFamilyCount;
-  vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice_, &queueFamilyCount,
-                                           nullptr);
-  std::vector<VkQueueFamilyProperties> queueFamilyProperties(queueFamilyCount);
-  vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice_, &queueFamilyCount,
-                                           queueFamilyProperties.data());
-  constexpr VkQueueFlags requiredQueueFlags =
-      VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_COMPUTE_BIT | VK_QUEUE_TRANSFER_BIT;
-  for (int i = 0; i < queueFamilyProperties.size(); i++) {
-    const auto& properties = queueFamilyProperties[i];
-    if ((properties.queueFlags & requiredQueueFlags) == requiredQueueFlags) {
-      queueIndex_ = i;
-      break;
+    VkPhysicalDeviceFeatures2 features = {
+        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2};
+    features.pNext = &imagelessFramebuffer;
+    vkGetPhysicalDeviceFeatures2(physicalDevice_, &features);
+
+    uint32_t queueFamilyCount;
+    vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice_, &queueFamilyCount,
+                                             nullptr);
+    std::vector<VkQueueFamilyProperties> queueFamilyProperties(
+        queueFamilyCount);
+    vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice_, &queueFamilyCount,
+                                             queueFamilyProperties.data());
+    constexpr VkQueueFlags requiredQueueFlags =
+        VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_COMPUTE_BIT | VK_QUEUE_TRANSFER_BIT;
+    for (int i = 0; i < queueFamilyProperties.size(); i++) {
+      const auto& properties = queueFamilyProperties[i];
+      if ((properties.queueFlags & requiredQueueFlags) == requiredQueueFlags) {
+        queueIndex_ = i;
+        break;
+      }
     }
+
+    std::vector<float> priorities = {1.f};
+    std::vector<VkDeviceQueueCreateInfo> queueInfos(1);
+    queueInfos[0] = {VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO};
+    queueInfos[0].queueFamilyIndex = queueIndex_;
+    queueInfos[0].queueCount = 1;
+    queueInfos[0].pQueuePriorities = priorities.data();
+
+    std::vector<const char*> deviceExtensions = {
+        VK_KHR_SYNCHRONIZATION_2_EXTENSION_NAME,
+        VK_KHR_IMAGELESS_FRAMEBUFFER_EXTENSION_NAME,
+        VK_KHR_SWAPCHAIN_EXTENSION_NAME,
+        VK_KHR_GET_MEMORY_REQUIREMENTS_2_EXTENSION_NAME,
+        VK_KHR_DEDICATED_ALLOCATION_EXTENSION_NAME,
+    };
+
+    VkDeviceCreateInfo deviceInfo = {VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO};
+    deviceInfo.pNext = &features;
+    deviceInfo.queueCreateInfoCount = static_cast<uint32_t>(queueInfos.size());
+    deviceInfo.pQueueCreateInfos = queueInfos.data();
+    deviceInfo.enabledExtensionCount =
+        static_cast<uint32_t>(deviceExtensions.size());
+    deviceInfo.ppEnabledExtensionNames = deviceExtensions.data();
+    deviceInfo.pEnabledFeatures = NULL;
+    vkCreateDevice(physicalDevice_, &deviceInfo, nullptr, &device_);
+
+    vkGetDeviceQueue(device_, queueIndex_, 0, &queue_);
   }
 
-  std::vector<float> priorities = {1.f};
-  std::vector<VkDeviceQueueCreateInfo> queueInfos(1);
-  queueInfos[0] = {VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO};
-  queueInfos[0].queueFamilyIndex = queueIndex_;
-  queueInfos[0].queueCount = 1;
-  queueInfos[0].pQueuePriorities = priorities.data();
+  ~Impl() {
+    vkDestroyDevice(device_, nullptr);
 
-  std::vector<const char*> deviceExtensions = {
-      VK_KHR_SYNCHRONIZATION_2_EXTENSION_NAME,
-      VK_KHR_IMAGELESS_FRAMEBUFFER_EXTENSION_NAME,
-      VK_KHR_SWAPCHAIN_EXTENSION_NAME,
-      VK_KHR_GET_MEMORY_REQUIREMENTS_2_EXTENSION_NAME,
-      VK_KHR_DEDICATED_ALLOCATION_EXTENSION_NAME,
-  };
+    destroyDebugUtilsMessengerEXT(instance_, messenger_, nullptr);
+    vkDestroyInstance(instance_, nullptr);
+  }
 
-  VkDeviceCreateInfo deviceInfo = {VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO};
-  deviceInfo.pNext = &features;
-  deviceInfo.queueCreateInfoCount = static_cast<uint32_t>(queueInfos.size());
-  deviceInfo.pQueueCreateInfos = queueInfos.data();
-  deviceInfo.enabledExtensionCount =
-      static_cast<uint32_t>(deviceExtensions.size());
-  deviceInfo.ppEnabledExtensionNames = deviceExtensions.data();
-  deviceInfo.pEnabledFeatures = NULL;
-  vkCreateDevice(physicalDevice_, &deviceInfo, nullptr, &device_);
+  auto instance() const noexcept { return instance_; }
+  auto device() const noexcept { return device_; }
+  auto queueIndex() const noexcept { return queueIndex_; }
+  auto queue() const noexcept { return queue_; }
 
-  vkGetDeviceQueue(device_, queueIndex_, 0, &queue_);
-}
+private:
+  VkInstance instance_;
+  VkDebugUtilsMessengerEXT messenger_;
 
-Engine::~Engine() {
-  vkDestroyDevice(device_, nullptr);
+  VkPhysicalDevice physicalDevice_;
+  VkDevice device_;
+  int queueIndex_ = -1;
+  VkQueue queue_;
+};
 
-  destroyDebugUtilsMessengerEXT(instance_, messenger_, nullptr);
-  vkDestroyInstance(instance_, nullptr);
-}
+Engine::Engine(const EngineCreateInfo& createInfo)
+    : impl_(std::make_shared<Impl>(createInfo)) {}
+
+VkInstance Engine::instance() const { return impl_->instance(); }
+VkDevice Engine::device() const { return impl_->device(); }
+int Engine::queueIndex() const { return impl_->queueIndex(); }
+VkQueue Engine::queue() const { return impl_->queue(); }
 
 }  // namespace instarf

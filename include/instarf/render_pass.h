@@ -1,6 +1,8 @@
 #ifndef INSTARF_RENDER_PASS_H
 #define INSTARF_RENDER_PASS_H
 
+#include <memory>
+
 #include <vulkan/vulkan.h>
 
 namespace instarf {
@@ -9,16 +11,15 @@ class Engine;
 
 class RenderPass {
 public:
-  RenderPass() = delete;
-  explicit RenderPass(const Engine& engine);
-  ~RenderPass();
+  RenderPass() = default;
+  explicit RenderPass(Engine engine);
+  ~RenderPass() = default;
 
-  operator VkRenderPass() const noexcept { return renderPass_; }
+  operator VkRenderPass() const;
 
 private:
-  const Engine* engine_;
-
-  VkRenderPass renderPass_;
+  class Impl;
+  std::shared_ptr<Impl> impl_;
 };
 }  // namespace instarf
 
