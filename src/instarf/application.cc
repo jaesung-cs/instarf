@@ -33,7 +33,7 @@ void Application::run() {
   const char** instanceExtensions =
       glfwGetRequiredInstanceExtensions(&instanceExtensionCount);
 
-  EngineCreateInfo engineInfo;
+  EngineInfo engineInfo;
   engineInfo.instanceExtensions = std::vector<std::string>(
       instanceExtensions, instanceExtensions + instanceExtensionCount);
   Engine engine(engineInfo);
@@ -48,7 +48,7 @@ void Application::run() {
   Attachment depthAttachment(engine, VK_FORMAT_D32_SFLOAT,
                              VK_SAMPLE_COUNT_4_BIT);
 
-  FramebufferCreateInfo framebufferInfo;
+  FramebufferInfo framebufferInfo;
   framebufferInfo.imageInfos = {
       {colorAttachment.usage(), colorAttachment.format()},
       {depthAttachment.usage(), depthAttachment.format()},

@@ -10,7 +10,7 @@ namespace instarf {
 
 class Engine;
 
-struct FramebufferCreateInfo {
+struct FramebufferInfo {
   struct ImageInfo {
     VkImageUsageFlags usage;
     VkFormat format;
@@ -21,7 +21,7 @@ struct FramebufferCreateInfo {
 class Framebuffer {
 public:
   Framebuffer() = default;
-  Framebuffer(Engine engine, const FramebufferCreateInfo& createInfo);
+  Framebuffer(Engine engine, const FramebufferInfo& createInfo);
   ~Framebuffer() = default;
 
   void resize(uint32_t width, uint32_t height);

@@ -11,14 +11,14 @@
 
 namespace instarf {
 
-struct EngineCreateInfo {
+struct EngineInfo {
   std::vector<std::string> instanceExtensions;
 };
 
 class Engine {
 public:
   Engine() = default;
-  explicit Engine(const EngineCreateInfo& createInfo);
+  explicit Engine(const EngineInfo& createInfo);
   ~Engine() = default;
 
   VkInstance instance() const;

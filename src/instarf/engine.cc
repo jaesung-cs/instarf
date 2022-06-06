@@ -39,7 +39,7 @@ class Engine::Impl {
 public:
   Impl() = delete;
 
-  Impl(const EngineCreateInfo& createInfo) {
+  Impl(const EngineInfo& createInfo) {
     // Instance
     VkApplicationInfo applicationInfo = {VK_STRUCTURE_TYPE_APPLICATION_INFO};
     applicationInfo.pApplicationName = "instarf viewer";
@@ -181,7 +181,7 @@ private:
   VmaAllocator allocator_;
 };
 
-Engine::Engine(const EngineCreateInfo& createInfo)
+Engine::Engine(const EngineInfo& createInfo)
     : impl_(std::make_shared<Impl>(createInfo)) {}
 
 VkInstance Engine::instance() const { return impl_->instance(); }

@@ -8,7 +8,7 @@ class Framebuffer::Impl {
 public:
   Impl() = delete;
 
-  Impl(Engine engine, const FramebufferCreateInfo& createInfo)
+  Impl(Engine engine, const FramebufferInfo& createInfo)
       : engine_(engine) {
     const auto& imageInfos = createInfo.imageInfos;
     formats_.resize(imageInfos.size());
@@ -68,7 +68,7 @@ private:
   VkFramebuffer framebuffer_ = VK_NULL_HANDLE;
 };
 
-Framebuffer::Framebuffer(Engine engine, const FramebufferCreateInfo& createInfo)
+Framebuffer::Framebuffer(Engine engine, const FramebufferInfo& createInfo)
     : impl_(std::make_shared<Impl>(engine, createInfo)) {}
 
 void Framebuffer::resize(uint32_t width, uint32_t height) {
