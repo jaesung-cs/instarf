@@ -4,7 +4,7 @@
 
 #include <GLFW/glfw3.h>
 
-#include <vulkan/vulkan.h>
+#include <instarf/engine.h>
 
 namespace instarf {
 
@@ -22,6 +22,15 @@ void Application::run() {
   window_ = glfwCreateWindow(width_, height_, "instarf", NULL, NULL);
   if (window_ == NULL) throw std::runtime_error("Failed to create window");
 
+  uint32_t instanceExtensionCount;
+  const char** instanceExtensions =
+      glfwGetRequiredInstanceExtensions(&instanceExtensionCount);
+
+  EngineCreateInfo engineInfo;
+  engineInfo.instanceExtensions = std::vector<std::string>(
+      instanceExtensions, instanceExtensions + instanceExtensionCount);
+  Engine engine(engineInfo);
+
   while (!glfwWindowShouldClose(window_)) {
     glfwPollEvents();
 
@@ -31,4 +40,4 @@ void Application::run() {
   glfwDestroyWindow(window_);
 }
 
-}  // namespace irf
+}  // namespace instarf
