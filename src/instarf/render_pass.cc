@@ -10,8 +10,8 @@ class RenderPass::Impl {
 public:
   Impl() = delete;
 
-  Impl(const Engine& engine) : engine_(&engine) {
-    auto device = engine_->device();
+  Impl(Engine engine) : engine_(engine) {
+    auto device = engine.device();
 
     std::vector<VkAttachmentDescription> attachments(3);
     attachments[0] = {};
@@ -91,14 +91,14 @@ public:
   }
 
   ~Impl() {
-    auto device = engine_->device();
+    auto device = engine_.device();
     vkDestroyRenderPass(device, renderPass_, nullptr);
   }
 
   operator VkRenderPass() const noexcept { return renderPass_; }
 
 private:
-  const Engine* engine_;
+  Engine engine_;
 
   VkRenderPass renderPass_;
 };
