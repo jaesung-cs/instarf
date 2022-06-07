@@ -48,28 +48,39 @@ public:
     // Synchronization
     VkSemaphoreCreateInfo semaphoreInfo = {
         VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO};
-    imageAcquiredSemaphores_.resize(imageCount_);
-    for (uint32_t i = 0; i < imageCount_; i++)
-      vkCreateSemaphore(device, &semaphoreInfo, nullptr,
-                        &imageAcquiredSemaphores_[i]);
-
     VkFenceCreateInfo fenceInfo = {VK_STRUCTURE_TYPE_FENCE_CREATE_INFO};
-    fenceInfo.flags = {VK_FENCE_CREATE_SIGNALED_BIT};
-    renderFinishedSemaphores_.resize(MAX_FRAMES_IN_FLIGHT);
-    renderFinishedFences_.resize(MAX_FRAMES_IN_FLIGHT);
-    for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+
+    renderFinishedSemaphores_.resize(imageCount_);
+    renderFinishedFences_.resize(imageCount_);
+    for (uint32_t i = 0; i < imageCount_; i++) {
       vkCreateSemaphore(device, &semaphoreInfo, nullptr,
                         &renderFinishedSemaphores_[i]);
       vkCreateFence(device, &fenceInfo, nullptr, &renderFinishedFences_[i]);
     }
+
+    imageAcquiredSemaphores_.resize(MAX_FRAMES_IN_FLIGHT);
+    for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+      vkCreateSemaphore(device, &semaphoreInfo, nullptr,
+                        &imageAcquiredSemaphores_[i]);
+    }
+
+    frameFinishedFences_ =
+        std::vector<VkFence>(MAX_FRAMES_IN_FLIGHT, VK_NULL_HANDLE);
   }
 
   ~Impl() {
     auto instance = engine_.instance();
     auto device = engine_.device();
 
-    vkWaitForFences(device, static_cast<uint32_t>(renderFinishedFences_.size()),
-                    renderFinishedFences_.data(), VK_TRUE, UINT64_MAX);
+    std::vector<VkFence> renderingFences;
+    for (auto fence : frameFinishedFences_) {
+      if (fence) renderingFences.push_back(fence);
+    }
+
+    if (!renderingFences.empty()) {
+      vkWaitForFences(device, static_cast<uint32_t>(renderingFences.size()),
+                      renderingFences.data(), VK_TRUE, UINT64_MAX);
+    }
 
     for (auto semaphore : imageAcquiredSemaphores_)
       vkDestroySemaphore(device, semaphore, nullptr);
@@ -96,9 +107,19 @@ public:
         swapchainInfo_.imageExtent.height != height) {
       auto device = engine_.device();
 
-      vkWaitForFences(device,
-                      static_cast<uint32_t>(renderFinishedFences_.size()),
-                      renderFinishedFences_.data(), VK_TRUE, UINT64_MAX);
+      std::vector<VkFence> renderingFences;
+      for (auto fence : frameFinishedFences_) {
+        if (fence) renderingFences.push_back(fence);
+      }
+
+      if (!renderingFences.empty()) {
+        vkWaitForFences(device, static_cast<uint32_t>(renderingFences.size()),
+                        renderingFences.data(), VK_TRUE, UINT64_MAX);
+        vkResetFences(device, static_cast<uint32_t>(renderingFences.size()),
+                      renderingFences.data());
+      }
+
+      for (auto& fence : frameFinishedFences_) fence = VK_NULL_HANDLE;
 
       destroyImageViews();
 
@@ -122,10 +143,6 @@ public:
     auto device = engine_.device();
     auto frameIndex = frameIndex_ % MAX_FRAMES_IN_FLIGHT;
 
-    vkWaitForFences(device, 1, &renderFinishedFences_[frameIndex], VK_TRUE,
-                    UINT64_MAX);
-    vkResetFences(device, 1, &renderFinishedFences_[frameIndex]);
-
     auto result = vkAcquireNextImageKHR(device, swapchain_, UINT64_MAX,
                                         imageAcquiredSemaphores_[frameIndex],
                                         nullptr, &imageIndex_);
@@ -136,7 +153,6 @@ public:
         std::cout << "Subobtimal next image" << std::endl;
         // Fall through
       case VK_SUCCESS:
-        vkResetCommandBuffer(commandBuffers_[imageIndex_], 0);
         return true;
 
         // Failure
@@ -151,8 +167,16 @@ public:
   auto commandBuffer() { return commandBuffers_[imageIndex_]; }
 
   void end() {
+    auto device = engine_.device();
     auto queue = engine_.queue();
     auto frameIndex = frameIndex_ % MAX_FRAMES_IN_FLIGHT;
+
+    if (frameFinishedFences_[frameIndex]) {
+      vkWaitForFences(device, 1, &frameFinishedFences_[frameIndex], VK_TRUE,
+                      UINT64_MAX);
+      vkResetFences(device, 1, &frameFinishedFences_[frameIndex]);
+      frameFinishedFences_[frameIndex] = VK_NULL_HANDLE;
+    }
 
     std::vector<VkPipelineStageFlags> waitStages = {
         VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT |
@@ -165,12 +189,14 @@ public:
     submitInfo.commandBufferCount = 1;
     submitInfo.pCommandBuffers = &commandBuffers_[imageIndex_];
     submitInfo.signalSemaphoreCount = 1;
-    submitInfo.pSignalSemaphores = &renderFinishedSemaphores_[frameIndex];
-    vkQueueSubmit(queue, 1, &submitInfo, renderFinishedFences_[frameIndex]);
+    submitInfo.pSignalSemaphores = &renderFinishedSemaphores_[imageIndex_];
+    vkQueueSubmit(queue, 1, &submitInfo, renderFinishedFences_[imageIndex_]);
+
+    frameFinishedFences_[frameIndex] = renderFinishedFences_[imageIndex_];
 
     VkPresentInfoKHR presentInfo = {VK_STRUCTURE_TYPE_PRESENT_INFO_KHR};
     presentInfo.waitSemaphoreCount = 1;
-    presentInfo.pWaitSemaphores = &renderFinishedSemaphores_[frameIndex];
+    presentInfo.pWaitSemaphores = &renderFinishedSemaphores_[imageIndex_];
     presentInfo.swapchainCount = 1;
     presentInfo.pSwapchains = &swapchain_;
     presentInfo.pImageIndices = &imageIndex_;
@@ -233,6 +259,7 @@ private:
   std::vector<VkSemaphore> imageAcquiredSemaphores_;
   std::vector<VkSemaphore> renderFinishedSemaphores_;
   std::vector<VkFence> renderFinishedFences_;
+  std::vector<VkFence> frameFinishedFences_;
 };
 
 Swapchain::Swapchain(Engine engine, VkSurfaceKHR surface)
