@@ -1,6 +1,6 @@
 #include <instarf/compute_pipeline.h>
 
-#include <instarf/engine.h>
+#include <instarf/device.h>
 #include <instarf/detail/shader_module.h>
 
 namespace instarf {
@@ -9,9 +9,7 @@ class ComputePipeline::Impl {
 public:
   Impl() = delete;
 
-  Impl(Engine engine, const ComputePipelineInfo& createInfo) : engine_(engine) {
-    auto device = engine.device();
-
+  Impl(Device device, const ComputePipelineInfo& createInfo) : device_(device) {
     VkPipelineShaderStageCreateInfo stage = {
         VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO};
     stage.stage = VK_SHADER_STAGE_VERTEX_BIT;
@@ -29,22 +27,19 @@ public:
     vkDestroyShaderModule(device, stage.module, nullptr);
   }
 
-  ~Impl() {
-    auto device = engine_.device();
-    vkDestroyPipeline(device, pipeline_, nullptr);
-  }
+  ~Impl() { vkDestroyPipeline(device_, pipeline_, nullptr); }
 
   operator VkPipeline() const noexcept { return pipeline_; }
 
 private:
-  Engine engine_;
+  Device device_;
 
   VkPipeline pipeline_;
 };
 
-ComputePipeline::ComputePipeline(Engine engine,
+ComputePipeline::ComputePipeline(Device device,
                                  const ComputePipelineInfo& createInfo)
-    : impl_(std::make_shared<Impl>(engine, createInfo)) {}
+    : impl_(std::make_shared<Impl>(device, createInfo)) {}
 
 ComputePipeline::operator VkPipeline() const { return *impl_; }
 

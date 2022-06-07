@@ -2,7 +2,7 @@
 
 #include "vk_mem_alloc.h"
 
-#include <instarf/engine.h>
+#include <instarf/device.h>
 
 namespace instarf {
 
@@ -10,8 +10,8 @@ class Attachment::Impl {
 public:
   Impl() = delete;
 
-  Impl(Engine engine, VkFormat format, VkSampleCountFlagBits samples)
-      : engine_(engine) {
+  Impl(Device device, VkFormat format, VkSampleCountFlagBits samples)
+      : device_(device) {
     VkImageUsageFlags usage = 0;
     VkImageAspectFlags aspect = 0;
 
@@ -54,11 +54,10 @@ public:
 
   ~Impl() {
     if (image_) {
-      auto allocator = engine_.allocator();
-      auto device = engine_.device();
+      auto allocator = device_.allocator();
 
       vmaDestroyImage(allocator, image_, allocation_);
-      vkDestroyImageView(device, imageView_, nullptr);
+      vkDestroyImageView(device_, imageView_, nullptr);
     }
   }
 
@@ -69,12 +68,11 @@ public:
   void resize(uint32_t width, uint32_t height) {
     if (imageInfo_.extent.width != width ||
         imageInfo_.extent.height != height) {
-      auto allocator = engine_.allocator();
-      auto device = engine_.device();
+      auto allocator = device_.allocator();
 
       if (image_) {
         vmaDestroyImage(allocator, image_, allocation_);
-        vkDestroyImageView(device, imageView_, nullptr);
+        vkDestroyImageView(device_, imageView_, nullptr);
       }
 
       imageInfo_.extent = {width, height, 1};
@@ -82,12 +80,12 @@ public:
                      &allocation_, nullptr);
 
       imageViewInfo_.image = image_;
-      vkCreateImageView(device, &imageViewInfo_, nullptr, &imageView_);
+      vkCreateImageView(device_, &imageViewInfo_, nullptr, &imageView_);
     }
   }
 
 private:
-  Engine engine_;
+  Device device_;
 
   VkImageCreateInfo imageInfo_;
   VkImage image_ = VK_NULL_HANDLE;
@@ -97,9 +95,9 @@ private:
   VkImageView imageView_ = VK_NULL_HANDLE;
 };
 
-Attachment::Attachment(Engine engine, VkFormat format,
+Attachment::Attachment(Device device, VkFormat format,
                        VkSampleCountFlagBits samples)
-    : impl_(std::make_shared<Impl>(engine, format, samples)) {}
+    : impl_(std::make_shared<Impl>(device, format, samples)) {}
 
 Attachment::operator VkImageView() const { return *impl_; }
 

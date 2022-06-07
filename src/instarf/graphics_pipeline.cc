@@ -1,6 +1,6 @@
 #include <instarf/graphics_pipeline.h>
 
-#include <instarf/engine.h>
+#include <instarf/device.h>
 #include <instarf/detail/shader_module.h>
 
 namespace instarf {
@@ -9,10 +9,8 @@ class GraphicsPipeline::Impl {
 public:
   Impl() = delete;
 
-  Impl(Engine engine, const GraphicsPipelineInfo& createInfo)
-      : engine_(engine) {
-    auto device = engine.device();
-
+  Impl(Device device, const GraphicsPipelineInfo& createInfo)
+      : device_(device) {
     std::vector<VkPipelineShaderStageCreateInfo> stages(2);
     stages[0] = {VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO};
     stages[0].stage = VK_SHADER_STAGE_VERTEX_BIT;
@@ -114,22 +112,19 @@ public:
       vkDestroyShaderModule(device, stage.module, nullptr);
   }
 
-  ~Impl() {
-    auto device = engine_.device();
-    vkDestroyPipeline(device, pipeline_, nullptr);
-  }
+  ~Impl() { vkDestroyPipeline(device_, pipeline_, nullptr); }
 
   operator VkPipeline() const noexcept { return pipeline_; }
 
 private:
-  Engine engine_;
+  Device device_;
 
   VkPipeline pipeline_;
 };
 
-GraphicsPipeline::GraphicsPipeline(Engine engine,
+GraphicsPipeline::GraphicsPipeline(Device device,
                                    const GraphicsPipelineInfo& createInfo)
-    : impl_(std::make_shared<Impl>(engine, createInfo)) {}
+    : impl_(std::make_shared<Impl>(device, createInfo)) {}
 
 GraphicsPipeline::operator VkPipeline() const { return *impl_; }
 

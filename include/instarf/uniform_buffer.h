@@ -5,14 +5,14 @@
 
 #include <vulkan/vulkan.h>
 
-namespace instarf {
+#include <instarf/device.h>
 
-class Engine;
+namespace instarf {
 
 class UniformBufferBase {
 public:
   UniformBufferBase() = default;
-  UniformBufferBase(Engine engine, uint32_t elementSize, uint32_t size);
+  UniformBufferBase(Device device, uint32_t elementSize, uint32_t size);
   virtual ~UniformBufferBase() = default;
 
   operator VkBuffer() const;
@@ -34,8 +34,8 @@ class UniformBuffer : public UniformBufferBase {
 public:
   UniformBuffer() = default;
 
-  UniformBuffer(Engine engine, uint32_t size)
-      : UniformBufferBase(engine, sizeof(T), size) {}
+  UniformBuffer(Device device, uint32_t size)
+      : UniformBufferBase(device, sizeof(T), size) {}
 
   ~UniformBuffer() override = default;
 

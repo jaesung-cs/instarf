@@ -1,17 +1,17 @@
 #include <instarf/swapchain.h>
 
 #include <iostream>
+#include <vector>
 
-#include <instarf/engine.h>
+#include <instarf/instance.h>
+#include <instarf/device.h>
 
 namespace instarf {
 
 class Swapchain::Impl {
 public:
-  Impl(Engine engine, VkSurfaceKHR surface)
-      : engine_(engine), surface_(surface) {
-    auto device = engine.device();
-
+  Impl(Instance instance, Device device, VkSurfaceKHR surface)
+      : instance_(instance), device_(device), surface_(surface) {
     imageCount_ = 3;
 
     swapchainInfo_ = {VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR};
@@ -33,7 +33,7 @@ public:
         VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO};
     commandPoolInfo.flags = VK_COMMAND_POOL_CREATE_TRANSIENT_BIT |
                             VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
-    commandPoolInfo.queueFamilyIndex = engine.queueIndex();
+    commandPoolInfo.queueFamilyIndex = device.queueIndex();
     vkCreateCommandPool(device, &commandPoolInfo, nullptr, &commandPool_);
 
     VkCommandBufferAllocateInfo commandBufferInfo = {
@@ -69,33 +69,30 @@ public:
   }
 
   ~Impl() {
-    auto instance = engine_.instance();
-    auto device = engine_.device();
-
     std::vector<VkFence> renderingFences;
     for (auto fence : frameFinishedFences_) {
       if (fence) renderingFences.push_back(fence);
     }
 
     if (!renderingFences.empty()) {
-      vkWaitForFences(device, static_cast<uint32_t>(renderingFences.size()),
+      vkWaitForFences(device_, static_cast<uint32_t>(renderingFences.size()),
                       renderingFences.data(), VK_TRUE, UINT64_MAX);
     }
 
     for (auto semaphore : imageAcquiredSemaphores_)
-      vkDestroySemaphore(device, semaphore, nullptr);
+      vkDestroySemaphore(device_, semaphore, nullptr);
 
     for (auto semaphore : renderFinishedSemaphores_)
-      vkDestroySemaphore(device, semaphore, nullptr);
+      vkDestroySemaphore(device_, semaphore, nullptr);
 
     for (auto fence : renderFinishedFences_)
-      vkDestroyFence(device, fence, nullptr);
+      vkDestroyFence(device_, fence, nullptr);
 
-    vkDestroyCommandPool(device, commandPool_, nullptr);
+    vkDestroyCommandPool(device_, commandPool_, nullptr);
 
     destroyImageViews();
-    vkDestroySwapchainKHR(device, swapchain_, nullptr);
-    vkDestroySurfaceKHR(instance, surface_, nullptr);
+    vkDestroySwapchainKHR(device_, swapchain_, nullptr);
+    vkDestroySurfaceKHR(instance_, surface_, nullptr);
   }
 
   auto imageCount() const noexcept { return imageCount_; }
@@ -105,17 +102,15 @@ public:
   bool resize(uint32_t width, uint32_t height) {
     if (swapchainInfo_.imageExtent.width != width ||
         swapchainInfo_.imageExtent.height != height) {
-      auto device = engine_.device();
-
       std::vector<VkFence> renderingFences;
       for (auto fence : frameFinishedFences_) {
         if (fence) renderingFences.push_back(fence);
       }
 
       if (!renderingFences.empty()) {
-        vkWaitForFences(device, static_cast<uint32_t>(renderingFences.size()),
+        vkWaitForFences(device_, static_cast<uint32_t>(renderingFences.size()),
                         renderingFences.data(), VK_TRUE, UINT64_MAX);
-        vkResetFences(device, static_cast<uint32_t>(renderingFences.size()),
+        vkResetFences(device_, static_cast<uint32_t>(renderingFences.size()),
                       renderingFences.data());
       }
 
@@ -127,8 +122,8 @@ public:
       swapchainInfo_.oldSwapchain = swapchain_;
 
       VkSwapchainKHR newSwapchain;
-      vkCreateSwapchainKHR(device, &swapchainInfo_, nullptr, &newSwapchain);
-      if (swapchain_) vkDestroySwapchainKHR(device, swapchain_, nullptr);
+      vkCreateSwapchainKHR(device_, &swapchainInfo_, nullptr, &newSwapchain);
+      if (swapchain_) vkDestroySwapchainKHR(device_, swapchain_, nullptr);
       swapchain_ = newSwapchain;
 
       createImageViews();
@@ -140,10 +135,9 @@ public:
   }
 
   bool begin() {
-    auto device = engine_.device();
     auto frameIndex = frameIndex_ % MAX_FRAMES_IN_FLIGHT;
 
-    auto result = vkAcquireNextImageKHR(device, swapchain_, UINT64_MAX,
+    auto result = vkAcquireNextImageKHR(device_, swapchain_, UINT64_MAX,
                                         imageAcquiredSemaphores_[frameIndex],
                                         nullptr, &imageIndex_);
 
@@ -167,14 +161,13 @@ public:
   auto commandBuffer() { return commandBuffers_[imageIndex_]; }
 
   void end() {
-    auto device = engine_.device();
-    auto queue = engine_.queue();
+    auto queue = device_.queue();
     auto frameIndex = frameIndex_ % MAX_FRAMES_IN_FLIGHT;
 
     if (frameFinishedFences_[frameIndex]) {
-      vkWaitForFences(device, 1, &frameFinishedFences_[frameIndex], VK_TRUE,
+      vkWaitForFences(device_, 1, &frameFinishedFences_[frameIndex], VK_TRUE,
                       UINT64_MAX);
-      vkResetFences(device, 1, &frameFinishedFences_[frameIndex]);
+      vkResetFences(device_, 1, &frameFinishedFences_[frameIndex]);
       frameFinishedFences_[frameIndex] = VK_NULL_HANDLE;
     }
 
@@ -212,11 +205,9 @@ public:
 
 private:
   void createImageViews() {
-    auto device = engine_.device();
-
-    vkGetSwapchainImagesKHR(device, swapchain_, &imageCount_, nullptr);
+    vkGetSwapchainImagesKHR(device_, swapchain_, &imageCount_, nullptr);
     images_.resize(imageCount_);
-    vkGetSwapchainImagesKHR(device, swapchain_, &imageCount_, images_.data());
+    vkGetSwapchainImagesKHR(device_, swapchain_, &imageCount_, images_.data());
 
     VkImageViewCreateInfo imageViewInfo = {
         VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO};
@@ -227,20 +218,19 @@ private:
     imageViews_.resize(imageCount_);
     for (int i = 0; i < images_.size(); i++) {
       imageViewInfo.image = images_[i];
-      vkCreateImageView(device, &imageViewInfo, nullptr, &imageViews_[i]);
+      vkCreateImageView(device_, &imageViewInfo, nullptr, &imageViews_[i]);
     }
   }
 
   void destroyImageViews() {
-    auto device = engine_.device();
-
     for (auto imageView : imageViews_)
-      vkDestroyImageView(device, imageView, nullptr);
+      vkDestroyImageView(device_, imageView, nullptr);
     images_.clear();
     imageViews_.clear();
   }
 
-  Engine engine_;
+  Instance instance_;
+  Device device_;
 
   VkSurfaceKHR surface_;
   VkSwapchainCreateInfoKHR swapchainInfo_;
@@ -262,8 +252,8 @@ private:
   std::vector<VkFence> frameFinishedFences_;
 };
 
-Swapchain::Swapchain(Engine engine, VkSurfaceKHR surface)
-    : impl_(std::make_shared<Impl>(engine, surface)) {}
+Swapchain::Swapchain(Instance instance, Device device, VkSurfaceKHR surface)
+    : impl_(std::make_shared<Impl>(instance, device, surface)) {}
 
 uint32_t Swapchain::imageCount() const { return impl_->imageCount(); }
 VkImageUsageFlags Swapchain::imageUsage() const { return impl_->imageUsage(); }

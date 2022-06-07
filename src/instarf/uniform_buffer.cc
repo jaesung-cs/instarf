@@ -2,7 +2,7 @@
 
 #include "vk_mem_alloc.h"
 
-#include <instarf/engine.h>
+#include <instarf/device.h>
 
 namespace instarf {
 namespace {
@@ -15,9 +15,9 @@ class UniformBufferBase::Impl {
 public:
   Impl() = delete;
 
-  Impl(Engine engine, uint32_t elementSize, uint32_t size) : engine_(engine) {
-    auto physicalDevice = engine_.physicalDevice();
-    auto allocator = engine_.allocator();
+  Impl(Device device, uint32_t elementSize, uint32_t size) : device_(device) {
+    auto physicalDevice = device.physicalDevice();
+    auto allocator = device.allocator();
 
     VkPhysicalDeviceProperties properties;
     vkGetPhysicalDeviceProperties(physicalDevice, &properties);
@@ -42,7 +42,7 @@ public:
   }
 
   ~Impl() {
-    auto allocator = engine_.allocator();
+    auto allocator = device_.allocator();
     vmaDestroyBuffer(allocator, buffer_, allocation_);
   }
 
@@ -54,7 +54,7 @@ public:
   const uint8_t* ptr() const noexcept { return map_; }
 
 private:
-  Engine engine_;
+  Device device_;
 
   VkBuffer buffer_;
   VmaAllocation allocation_;
@@ -62,9 +62,9 @@ private:
   uint8_t* map_;
 };
 
-UniformBufferBase::UniformBufferBase(Engine engine, uint32_t elementSize,
+UniformBufferBase::UniformBufferBase(Device device, uint32_t elementSize,
                                      uint32_t size)
-    : impl_(std::make_shared<Impl>(engine, elementSize, size)) {}
+    : impl_(std::make_shared<Impl>(device, elementSize, size)) {}
 
 UniformBufferBase::operator VkBuffer() const { return *impl_; }
 

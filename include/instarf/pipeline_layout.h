@@ -8,7 +8,7 @@
 
 namespace instarf {
 
-class Engine;
+class Device;
 
 struct PipelineLayoutInfo {
   std::vector<VkDescriptorSetLayout> layouts;
@@ -18,7 +18,7 @@ struct PipelineLayoutInfo {
 class PipelineLayout {
 public:
   PipelineLayout() = default;
-  PipelineLayout(Engine engine, const PipelineLayoutInfo& createInfo);
+  PipelineLayout(Device device, const PipelineLayoutInfo& createInfo);
   ~PipelineLayout() = default;
 
   operator VkPipelineLayout() const;

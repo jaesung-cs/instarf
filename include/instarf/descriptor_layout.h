@@ -8,7 +8,7 @@
 
 namespace instarf {
 
-class Engine;
+class Device;
 
 struct DescriptorLayoutInfo {
   struct Binding {
@@ -22,7 +22,7 @@ struct DescriptorLayoutInfo {
 class DescriptorLayout {
 public:
   DescriptorLayout() = default;
-  DescriptorLayout(Engine engine, const DescriptorLayoutInfo& createInfo);
+  DescriptorLayout(Device device, const DescriptorLayoutInfo& createInfo);
   ~DescriptorLayout() = default;
 
   operator VkDescriptorSetLayout() const;

@@ -7,12 +7,12 @@
 
 namespace instarf {
 
-class Engine;
+class Device;
 
 class RenderPass {
 public:
   RenderPass() = default;
-  explicit RenderPass(Engine engine);
+  explicit RenderPass(Device device);
   ~RenderPass() = default;
 
   operator VkRenderPass() const;

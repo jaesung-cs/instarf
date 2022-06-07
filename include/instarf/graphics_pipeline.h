@@ -9,7 +9,7 @@
 
 namespace instarf {
 
-class Engine;
+class Device;
 
 struct GraphicsPipelineInfo {
   std::string directory;
@@ -26,7 +26,7 @@ struct GraphicsPipelineInfo {
 class GraphicsPipeline {
 public:
   GraphicsPipeline() = default;
-  GraphicsPipeline(Engine engine, const GraphicsPipelineInfo& createInfo);
+  GraphicsPipeline(Device device, const GraphicsPipelineInfo& createInfo);
   ~GraphicsPipeline() = default;
 
   operator VkPipeline() const;

@@ -1,6 +1,6 @@
 #include <instarf/framebuffer.h>
 
-#include <instarf/engine.h>
+#include <instarf/device.h>
 
 namespace instarf {
 
@@ -8,7 +8,7 @@ class Framebuffer::Impl {
 public:
   Impl() = delete;
 
-  Impl(Engine engine, const FramebufferInfo& createInfo) : engine_(engine) {
+  Impl(Device device, const FramebufferInfo& createInfo) : device_(device) {
     const auto& imageInfos = createInfo.imageInfos;
     formats_.resize(imageInfos.size());
     imageInfos_.resize(imageInfos.size());
@@ -35,18 +35,13 @@ public:
   }
 
   ~Impl() {
-    if (framebuffer_) {
-      auto device = engine_.device();
-      vkDestroyFramebuffer(device, framebuffer_, nullptr);
-    }
+    if (framebuffer_) vkDestroyFramebuffer(device_, framebuffer_, nullptr);
   }
 
   operator VkFramebuffer() const noexcept { return framebuffer_; }
 
   void resize(uint32_t width, uint32_t height) {
     if (framebufferInfo_.width != width || framebufferInfo_.height != height) {
-      auto device = engine_.device();
-
       for (auto& imageInfo : imageInfos_) {
         imageInfo.width = width;
         imageInfo.height = height;
@@ -54,13 +49,13 @@ public:
       framebufferInfo_.width = width;
       framebufferInfo_.height = height;
 
-      if (framebuffer_) vkDestroyFramebuffer(device, framebuffer_, nullptr);
-      vkCreateFramebuffer(device, &framebufferInfo_, nullptr, &framebuffer_);
+      if (framebuffer_) vkDestroyFramebuffer(device_, framebuffer_, nullptr);
+      vkCreateFramebuffer(device_, &framebufferInfo_, nullptr, &framebuffer_);
     }
   }
 
 private:
-  Engine engine_;
+  Device device_;
 
   std::vector<VkFormat> formats_;
   std::vector<VkFramebufferAttachmentImageInfo> imageInfos_;
@@ -69,8 +64,8 @@ private:
   VkFramebuffer framebuffer_ = VK_NULL_HANDLE;
 };
 
-Framebuffer::Framebuffer(Engine engine, const FramebufferInfo& createInfo)
-    : impl_(std::make_shared<Impl>(engine, createInfo)) {}
+Framebuffer::Framebuffer(Device device, const FramebufferInfo& createInfo)
+    : impl_(std::make_shared<Impl>(device, createInfo)) {}
 
 Framebuffer::operator VkFramebuffer() const { return *impl_; }
 

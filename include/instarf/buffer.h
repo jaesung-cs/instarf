@@ -5,14 +5,14 @@
 
 #include <vulkan/vulkan.h>
 
-#include <instarf/engine.h>
+#include <instarf/device.h>
 
 namespace instarf {
 
 class BufferBase {
 public:
   BufferBase() = default;
-  BufferBase(Engine engine, VkBufferUsageFlags usage, VkDeviceSize size,
+  BufferBase(Device device, VkBufferUsageFlags usage, VkDeviceSize size,
              const void* ptr = nullptr);
   virtual ~BufferBase() = default;
 
@@ -28,11 +28,11 @@ class Buffer : public BufferBase {
 public:
   Buffer() = default;
 
-  Buffer(Engine engine, VkBufferUsageFlags usage, uint64_t size)
-      : BufferBase(engine, usage, sizeof(T) * size), size_(size) {}
+  Buffer(Device device, VkBufferUsageFlags usage, uint64_t size)
+      : BufferBase(device, usage, sizeof(T) * size), size_(size) {}
 
-  Buffer(Engine engine, VkBufferUsageFlags usage, const std::vector<T>& data)
-      : BufferBase(engine, usage, sizeof(T) * data.size(), data.data()),
+  Buffer(Device device, VkBufferUsageFlags usage, const std::vector<T>& data)
+      : BufferBase(device, usage, sizeof(T) * data.size(), data.data()),
         size_(data.size()) {}
 
   ~Buffer() override = default;
@@ -51,11 +51,11 @@ private:
 public:
   BufferWithTraits() = default;
 
-  BufferWithTraits(Engine engine, uint64_t size)
-      : Buffer(engine, usage, size) {}
+  BufferWithTraits(Device device, uint64_t size)
+      : Buffer(device, usage, size) {}
 
-  BufferWithTraits(Engine engine, const std::vector<T>& data)
-      : Buffer(engine, usage, data) {}
+  BufferWithTraits(Device device, const std::vector<T>& data)
+      : Buffer(device, usage, data) {}
 
   ~BufferWithTraits() override = default;
 

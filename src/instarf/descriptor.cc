@@ -1,6 +1,6 @@
 #include <instarf/descriptor.h>
 
-#include <instarf/engine.h>
+#include <instarf/device.h>
 
 namespace instarf {
 
@@ -8,9 +8,8 @@ class Descriptor::Impl {
 public:
   Impl() = delete;
 
-  Impl(Engine engine, VkDescriptorSetLayout layout) : engine_(engine) {
-    auto device = engine.device();
-    auto descriptorPool = engine.descriptorPool();
+  Impl(Device device, VkDescriptorSetLayout layout) : device_(device) {
+    auto descriptorPool = device.descriptorPool();
 
     VkDescriptorSetAllocateInfo descriptorInfo = {
         VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO};
@@ -21,17 +20,14 @@ public:
   }
 
   ~Impl() {
-    auto device = engine_.device();
-    auto descriptorPool = engine_.descriptorPool();
+    auto descriptorPool = device_.descriptorPool();
 
-    vkFreeDescriptorSets(device, descriptorPool, 1, &descriptor_);
+    vkFreeDescriptorSets(device_, descriptorPool, 1, &descriptor_);
   }
 
   operator VkDescriptorSet() const noexcept { return descriptor_; }
 
   void bind(uint32_t binding, UniformBufferBase buffer) {
-    auto device = engine_.device();
-
     VkDescriptorBufferInfo bufferInfo = {buffer, 0, buffer.alignment()};
 
     VkWriteDescriptorSet write = {VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET};
@@ -42,17 +38,17 @@ public:
     write.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
     write.pBufferInfo = &bufferInfo;
 
-    vkUpdateDescriptorSets(device, 1, &write, 0, nullptr);
+    vkUpdateDescriptorSets(device_, 1, &write, 0, nullptr);
   }
 
 private:
-  Engine engine_;
+  Device device_;
 
   VkDescriptorSet descriptor_;
 };
 
-Descriptor::Descriptor(Engine engine, VkDescriptorSetLayout layout)
-    : impl_(std::make_shared<Impl>(engine, layout)) {}
+Descriptor::Descriptor(Device device, VkDescriptorSetLayout layout)
+    : impl_(std::make_shared<Impl>(device, layout)) {}
 
 Descriptor::operator VkDescriptorSet() const { return *impl_; }
 

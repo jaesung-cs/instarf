@@ -7,12 +7,12 @@
 
 namespace instarf {
 
-class Engine;
+class Device;
 
 class RenderPassUi {
 public:
   RenderPassUi() = default;
-  explicit RenderPassUi(Engine engine);
+  explicit RenderPassUi(Device device);
   ~RenderPassUi() = default;
 
   operator VkRenderPass() const;
@@ -21,6 +21,7 @@ private:
   class Impl;
   std::shared_ptr<Impl> impl_;
 };
+
 }  // namespace instarf
 
 #endif  // INSTARF_RENDER_PASS_UI_H

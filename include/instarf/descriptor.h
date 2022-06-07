@@ -9,12 +9,12 @@
 
 namespace instarf {
 
-class Engine;
+class Device;
 
 class Descriptor {
 public:
   Descriptor() = default;
-  Descriptor(Engine engine, VkDescriptorSetLayout layout);
+  Descriptor(Device device, VkDescriptorSetLayout layout);
   ~Descriptor() = default;
 
   operator VkDescriptorSet() const;

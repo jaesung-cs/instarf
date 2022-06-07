@@ -1,6 +1,6 @@
 #include <instarf/descriptor_layout.h>
 
-#include <instarf/engine.h>
+#include <instarf/device.h>
 
 namespace instarf {
 
@@ -8,10 +8,8 @@ class DescriptorLayout::Impl {
 public:
   Impl() = delete;
 
-  Impl(Engine engine, const DescriptorLayoutInfo& createInfo)
-      : engine_(engine) {
-    auto device = engine.device();
-
+  Impl(Device device, const DescriptorLayoutInfo& createInfo)
+      : device_(device) {
     std::vector<VkDescriptorSetLayoutBinding> bindings(
         createInfo.bindings.size());
     for (int i = 0; i < createInfo.bindings.size(); i++) {
@@ -32,22 +30,19 @@ public:
                                 &layout_);
   }
 
-  ~Impl() {
-    auto device = engine_.device();
-    vkDestroyDescriptorSetLayout(device, layout_, nullptr);
-  }
+  ~Impl() { vkDestroyDescriptorSetLayout(device_, layout_, nullptr); }
 
   operator VkDescriptorSetLayout() const noexcept { return layout_; }
 
 private:
-  Engine engine_;
+  Device device_;
 
   VkDescriptorSetLayout layout_;
 };
 
-DescriptorLayout::DescriptorLayout(Engine engine,
+DescriptorLayout::DescriptorLayout(Device device,
                                    const DescriptorLayoutInfo& createInfo)
-    : impl_(std::make_shared<Impl>(engine, createInfo)) {}
+    : impl_(std::make_shared<Impl>(device, createInfo)) {}
 
 DescriptorLayout::operator VkDescriptorSetLayout() const { return *impl_; }
 

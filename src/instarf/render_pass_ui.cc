@@ -2,7 +2,7 @@
 
 #include <vector>
 
-#include <instarf/engine.h>
+#include <instarf/device.h>
 
 namespace instarf {
 
@@ -10,9 +10,7 @@ class RenderPassUi::Impl {
 public:
   Impl() = delete;
 
-  Impl(Engine engine) : engine_(engine) {
-    auto device = engine.device();
-
+  Impl(Device device) : device_(device) {
     std::vector<VkAttachmentDescription> attachments(1);
     attachments[0] = {};
     attachments[0].format = VK_FORMAT_B8G8R8A8_UNORM;
@@ -53,21 +51,18 @@ public:
     vkCreateRenderPass(device, &renderPassInfo, nullptr, &renderPass_);
   }
 
-  ~Impl() {
-    auto device = engine_.device();
-    vkDestroyRenderPass(device, renderPass_, nullptr);
-  }
+  ~Impl() { vkDestroyRenderPass(device_, renderPass_, nullptr); }
 
   operator VkRenderPass() const noexcept { return renderPass_; }
 
 private:
-  Engine engine_;
+  Device device_;
 
   VkRenderPass renderPass_;
 };
 
-RenderPassUi::RenderPassUi(Engine engine)
-    : impl_(std::make_shared<Impl>(engine)) {}
+RenderPassUi::RenderPassUi(Device device)
+    : impl_(std::make_shared<Impl>(device)) {}
 
 RenderPassUi::operator VkRenderPass() const { return *impl_; }
 

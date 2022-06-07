@@ -8,10 +8,10 @@ class BufferBase::Impl {
 public:
   Impl() = delete;
 
-  Impl(Engine engine, VkBufferUsageFlags usage, VkDeviceSize size,
+  Impl(Device device, VkBufferUsageFlags usage, VkDeviceSize size,
        const void* ptr)
-      : engine_(engine) {
-    auto allocator = engine.allocator();
+      : device_(device) {
+    auto allocator = device.allocator();
 
     VkBufferCreateInfo bufferInfo = {VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO};
     bufferInfo.size = size;
@@ -35,7 +35,7 @@ public:
 
       std::memcpy(allocationInfo.pMappedData, ptr, size);
 
-      engine.submit([this, size](VkCommandBuffer cb) {
+      device.submit([this, size](VkCommandBuffer cb) {
         VkCommandBufferBeginInfo beginInfo = {
             VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
         beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
@@ -65,7 +65,7 @@ public:
   }
 
   ~Impl() {
-    auto allocator = engine_.allocator();
+    auto allocator = device_.allocator();
 
     vmaDestroyBuffer(allocator, buffer_, allocation_);
 
@@ -76,7 +76,7 @@ public:
   operator VkBuffer() const { return buffer_; }
 
 private:
-  Engine engine_;
+  Device device_;
 
   VkBuffer buffer_;
   VmaAllocation allocation_;
@@ -85,9 +85,9 @@ private:
   VmaAllocation stagingAllocation_;
 };
 
-BufferBase::BufferBase(Engine engine, VkBufferUsageFlags usage,
+BufferBase::BufferBase(Device device, VkBufferUsageFlags usage,
                        VkDeviceSize size, const void* ptr)
-    : impl_(std::make_shared<Impl>(engine, usage, size, ptr)) {}
+    : impl_(std::make_shared<Impl>(device, usage, size, ptr)) {}
 
 BufferBase::operator VkBuffer() const { return *impl_; }
 

@@ -8,7 +8,7 @@
 
 namespace instarf {
 
-class Engine;
+class Device;
 
 struct FramebufferInfo {
   VkRenderPass renderPass;
@@ -23,7 +23,7 @@ struct FramebufferInfo {
 class Framebuffer {
 public:
   Framebuffer() = default;
-  Framebuffer(Engine engine, const FramebufferInfo& createInfo);
+  Framebuffer(Device device, const FramebufferInfo& createInfo);
   ~Framebuffer() = default;
 
   operator VkFramebuffer() const;

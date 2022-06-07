@@ -8,7 +8,7 @@
 
 namespace instarf {
 
-class Engine;
+class Device;
 
 struct ComputePipelineInfo {
   std::string directory;
@@ -19,7 +19,7 @@ struct ComputePipelineInfo {
 class ComputePipeline {
 public:
   ComputePipeline() = default;
-  ComputePipeline(Engine engine, const ComputePipelineInfo& createInfo);
+  ComputePipeline(Device device, const ComputePipelineInfo& createInfo);
   ~ComputePipeline() = default;
 
   operator VkPipeline() const;

@@ -1,5 +1,5 @@
-#ifndef INSTARF_ENGINE_H
-#define INSTARF_ENGINE_H
+#ifndef INSTARF_DEVICE_H
+#define INSTARF_DEVICE_H
 
 #include <memory>
 #include <vector>
@@ -7,27 +7,28 @@
 #include <functional>
 
 #include <vulkan/vulkan.h>
-
 #include "vk_mem_alloc.h"
 
 namespace instarf {
 
-struct EngineInfo {
-  std::vector<std::string> instanceExtensions;
+class Instance;
+
+struct DeviceInfo {
+  std::vector<std::string> extensions;
 };
 
-class Engine {
+class Device {
 protected:
   using CommandRecordFunc = std::function<void(VkCommandBuffer)>;
 
 public:
-  Engine() = default;
-  explicit Engine(const EngineInfo& createInfo);
-  ~Engine() = default;
+  Device() = default;
+  Device(Instance instance, const DeviceInfo& createInfo);
+  ~Device() = default;
 
-  VkInstance instance() const;
+  operator VkDevice() const;
+
   VkPhysicalDevice physicalDevice() const;
-  VkDevice device() const;
   int queueIndex() const;
   VkQueue queue() const;
   VmaAllocator allocator() const;
@@ -43,4 +44,4 @@ private:
 
 }  // namespace instarf
 
-#endif  // INSTARF_ENGINE_H
+#endif  // INSTARF_DEVICE_H

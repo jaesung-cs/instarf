@@ -15,7 +15,8 @@
 #include <imgui_impl_vulkan.h>
 
 #include <instarf/camera.h>
-#include <instarf/engine.h>
+#include <instarf/instance.h>
+#include <instarf/device.h>
 #include <instarf/swapchain.h>
 #include <instarf/attachment.h>
 #include <instarf/render_pass.h>
@@ -55,23 +56,25 @@ void Application::run() {
   const char** instanceExtensions =
       glfwGetRequiredInstanceExtensions(&instanceExtensionCount);
 
-  EngineInfo engineInfo;
-  engineInfo.instanceExtensions = std::vector<std::string>(
+  InstanceInfo instanceInfo;
+  instanceInfo.extensions = std::vector<std::string>(
       instanceExtensions, instanceExtensions + instanceExtensionCount);
-  Engine engine(engineInfo);
+  Instance instance(instanceInfo);
 
-  auto instance = engine.instance();
   VkSurfaceKHR surface;
   glfwCreateWindowSurface(instance, window_, nullptr, &surface);
 
-  Swapchain swapchain(engine, surface);
-  Attachment colorAttachment(engine, VK_FORMAT_B8G8R8A8_UNORM,
+  DeviceInfo deviceInfo;
+  Device device(instance, deviceInfo);
+
+  Swapchain swapchain(instance, device, surface);
+  Attachment colorAttachment(device, VK_FORMAT_B8G8R8A8_UNORM,
                              VK_SAMPLE_COUNT_4_BIT);
-  Attachment depthAttachment(engine, VK_FORMAT_D32_SFLOAT,
+  Attachment depthAttachment(device, VK_FORMAT_D32_SFLOAT,
                              VK_SAMPLE_COUNT_4_BIT);
 
-  RenderPass renderPass(engine);
-  RenderPassUi renderPassUi(engine);
+  RenderPass renderPass(device);
+  RenderPassUi renderPassUi(device);
 
   FramebufferInfo framebufferInfo;
   framebufferInfo.renderPass = renderPass;
@@ -80,20 +83,20 @@ void Application::run() {
       {depthAttachment.usage(), depthAttachment.format()},
       {swapchain.imageUsage(), swapchain.format()},
   };
-  Framebuffer framebuffer(engine, framebufferInfo);
+  Framebuffer framebuffer(device, framebufferInfo);
 
   framebufferInfo.renderPass = renderPassUi;
   framebufferInfo.imageInfos = {
       {swapchain.imageUsage(), swapchain.format()},
   };
-  Framebuffer framebufferUi(engine, framebufferInfo);
+  Framebuffer framebufferUi(device, framebufferInfo);
 
   DescriptorLayoutInfo descriptorLayoutInfo;
   descriptorLayoutInfo.bindings = {
       {0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,
        VK_SHADER_STAGE_VERTEX_BIT},
   };
-  DescriptorLayout cameraLayout(engine, descriptorLayoutInfo);
+  DescriptorLayout cameraLayout(device, descriptorLayoutInfo);
 
   PipelineLayoutInfo pipelineLayoutInfo;
   pipelineLayoutInfo.layouts = {
@@ -102,7 +105,7 @@ void Application::run() {
   pipelineLayoutInfo.pushConstantRanges = {
       {VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(glm::mat4)},
   };
-  PipelineLayout pipelineLayout(engine, pipelineLayoutInfo);
+  PipelineLayout pipelineLayout(device, pipelineLayoutInfo);
 
   GraphicsPipelineInfo pipelineInfo;
   pipelineInfo.directory = "C:\\workspace\\instarf\\assets\\shaders";
@@ -119,18 +122,18 @@ void Application::run() {
   pipelineInfo.layout = pipelineLayout;
   pipelineInfo.renderPass = renderPass;
   pipelineInfo.subpass = 0;
-  GraphicsPipeline colorPipeline(engine, pipelineInfo);
+  GraphicsPipeline colorPipeline(device, pipelineInfo);
 
-  UniformBuffer<CameraUbo> cameraBuffer(engine, swapchain.imageCount());
+  UniformBuffer<CameraUbo> cameraBuffer(device, swapchain.imageCount());
 
-  Descriptor cameraDescriptor(engine, cameraLayout);
+  Descriptor cameraDescriptor(device, cameraLayout);
   cameraDescriptor.bind(0, cameraBuffer);
 
   VertexBuffer<float> linesVertex(
-      engine, {0.f, 0.f, 0.f, 1.f, 0.f, 0.f, 1.f, 0.f, 0.f, 1.f, 0.f, 0.f,
+      device, {0.f, 0.f, 0.f, 1.f, 0.f, 0.f, 1.f, 0.f, 0.f, 1.f, 0.f, 0.f,
                0.f, 0.f, 0.f, 0.f, 1.f, 0.f, 0.f, 1.f, 0.f, 0.f, 1.f, 0.f,
                0.f, 0.f, 0.f, 0.f, 0.f, 1.f, 0.f, 0.f, 1.f, 0.f, 0.f, 1.f});
-  IndexBuffer linesIndex(engine, {0, 1, 2, 3, 4, 5});
+  IndexBuffer linesIndex(device, {0, 1, 2, 3, 4, 5});
 
   // ImGui
   IMGUI_CHECKVERSION();
@@ -148,13 +151,13 @@ void Application::run() {
 
   ImGui_ImplGlfw_InitForVulkan(window_, true);
   ImGui_ImplVulkan_InitInfo initInfo = {};
-  initInfo.Instance = engine.instance();
-  initInfo.PhysicalDevice = engine.physicalDevice();
-  initInfo.Device = engine.device();
-  initInfo.QueueFamily = engine.queueIndex();
-  initInfo.Queue = engine.queue();
+  initInfo.Instance = instance;
+  initInfo.PhysicalDevice = device.physicalDevice();
+  initInfo.Device = device;
+  initInfo.QueueFamily = device.queueIndex();
+  initInfo.Queue = device.queue();
   initInfo.PipelineCache = nullptr;
-  initInfo.DescriptorPool = engine.descriptorPool();
+  initInfo.DescriptorPool = device.descriptorPool();
   initInfo.Allocator = nullptr;
   initInfo.MinImageCount = swapchain.imageCount();
   initInfo.ImageCount = swapchain.imageCount();
@@ -164,7 +167,7 @@ void Application::run() {
   ImGui_ImplVulkan_Init(&initInfo, renderPassUi);
 
   // Upload Fonts
-  engine.submit([](VkCommandBuffer cb) {
+  device.submit([](VkCommandBuffer cb) {
     VkCommandBufferBeginInfo beginInfo = {
         VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
     beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
@@ -173,7 +176,7 @@ void Application::run() {
     vkEndCommandBuffer(cb);
   });
 
-  engine.waitIdle();
+  device.waitIdle();
   ImGui_ImplVulkan_DestroyFontUploadObjects();
 
   Camera camera;
@@ -325,7 +328,7 @@ void Application::run() {
     ImGui::RenderPlatformWindowsDefault();
   }
 
-  engine.waitIdle();
+  device.waitIdle();
 
   ImGui_ImplVulkan_Shutdown();
   ImGui_ImplGlfw_Shutdown();

@@ -1,90 +1,20 @@
-#include <instarf/engine.h>
+#include <instarf/device.h>
 
-#include <iostream>
+#include <instarf/instance.h>
 
 namespace instarf {
-namespace {
-// Validation layer callback
-VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
-    VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
-    VkDebugUtilsMessageTypeFlagsEXT messageType,
-    const VkDebugUtilsMessengerCallbackDataEXT* callbackData, void* pUserData) {
-  std::cerr << callbackData->pMessage << std::endl << std::endl;
 
-  return VK_FALSE;
-}
-
-VkResult createDebugUtilsMessengerEXT(
-    VkInstance instance, const VkDebugUtilsMessengerCreateInfoEXT* pCreateInfo,
-    const VkAllocationCallbacks* pAllocator,
-    VkDebugUtilsMessengerEXT* pDebugMessenger) {
-  auto func = (PFN_vkCreateDebugUtilsMessengerEXT)vkGetInstanceProcAddr(
-      instance, "vkCreateDebugUtilsMessengerEXT");
-  if (func != nullptr)
-    return func(instance, pCreateInfo, pAllocator, pDebugMessenger);
-  else
-    return VK_ERROR_EXTENSION_NOT_PRESENT;
-}
-
-void destroyDebugUtilsMessengerEXT(VkInstance instance,
-                                   VkDebugUtilsMessengerEXT debugMessenger,
-                                   const VkAllocationCallbacks* pAllocator) {
-  auto func = (PFN_vkDestroyDebugUtilsMessengerEXT)vkGetInstanceProcAddr(
-      instance, "vkDestroyDebugUtilsMessengerEXT");
-  if (func != nullptr) func(instance, debugMessenger, pAllocator);
-}
-}  // namespace
-
-class Engine::Impl {
+class Device::Impl {
 public:
   Impl() = delete;
 
-  Impl(const EngineInfo& createInfo) {
-    // Instance
-    VkApplicationInfo applicationInfo = {VK_STRUCTURE_TYPE_APPLICATION_INFO};
-    applicationInfo.pApplicationName = "instarf viewer";
-    applicationInfo.applicationVersion = VK_MAKE_VERSION(1, 0, 0);
-    applicationInfo.pEngineName = "instarf";
-    applicationInfo.engineVersion = VK_MAKE_VERSION(1, 0, 0);
-    applicationInfo.apiVersion = VK_API_VERSION_1_3;
-
-    std::vector<const char*> instanceLayers;
-    instanceLayers.push_back("VK_LAYER_KHRONOS_validation");
-
-    std::vector<const char*> instanceExtensions;
-    instanceExtensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
-    for (const auto& extension : createInfo.instanceExtensions)
-      instanceExtensions.push_back(extension.c_str());
-
-    VkInstanceCreateInfo instanceInfo = {
-        VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO};
-    instanceInfo.pApplicationInfo = &applicationInfo;
-    instanceInfo.enabledLayerCount =
-        static_cast<uint32_t>(instanceLayers.size());
-    instanceInfo.ppEnabledLayerNames = instanceLayers.data();
-    instanceInfo.enabledExtensionCount =
-        static_cast<uint32_t>(instanceExtensions.size());
-    instanceInfo.ppEnabledExtensionNames = instanceExtensions.data();
-    vkCreateInstance(&instanceInfo, nullptr, &instance_);
-
-    VkDebugUtilsMessengerCreateInfoEXT messengerInfo = {
-        VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT};
-    messengerInfo.messageSeverity =
-        VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT |
-        VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
-    messengerInfo.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT |
-                                VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT |
-                                VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
-    messengerInfo.pfnUserCallback = debugCallback;
-    messengerInfo.pUserData = nullptr;
-    createDebugUtilsMessengerEXT(instance_, &messengerInfo, nullptr,
-                                 &messenger_);
-
+  Impl(Instance instance, const DeviceInfo& createInfo) {
     // Physical device
+    // TODO: match with UUID
     uint32_t physicalDeviceCount;
-    vkEnumeratePhysicalDevices(instance_, &physicalDeviceCount, nullptr);
+    vkEnumeratePhysicalDevices(instance, &physicalDeviceCount, nullptr);
     std::vector<VkPhysicalDevice> physicalDevices(physicalDeviceCount);
-    vkEnumeratePhysicalDevices(instance_, &physicalDeviceCount,
+    vkEnumeratePhysicalDevices(instance, &physicalDeviceCount,
                                physicalDevices.data());
 
     physicalDevice_ = physicalDevices[0];
@@ -151,8 +81,8 @@ public:
     allocatorInfo.flags = VMA_ALLOCATOR_CREATE_KHR_DEDICATED_ALLOCATION_BIT;
     allocatorInfo.physicalDevice = physicalDevice_;
     allocatorInfo.device = device_;
-    allocatorInfo.instance = instance_;
-    allocatorInfo.vulkanApiVersion = applicationInfo.apiVersion;
+    allocatorInfo.instance = instance;
+    allocatorInfo.vulkanApiVersion = VK_API_VERSION_1_3;
     vmaCreateAllocator(&allocatorInfo, &allocator_);
 
     // Descriptor pool
@@ -179,20 +109,14 @@ public:
 
   ~Impl() {
     vkDestroyCommandPool(device_, commandPool_, nullptr);
-
     vkDestroyDescriptorPool(device_, descriptorPool_, nullptr);
-
     vmaDestroyAllocator(allocator_);
-
     vkDestroyDevice(device_, nullptr);
-
-    destroyDebugUtilsMessengerEXT(instance_, messenger_, nullptr);
-    vkDestroyInstance(instance_, nullptr);
   }
 
-  auto instance() const noexcept { return instance_; }
+  operator VkDevice() const noexcept { return device_; }
+
   auto physicalDevice() const noexcept { return physicalDevice_; }
-  auto device() const noexcept { return device_; }
   auto queueIndex() const noexcept { return queueIndex_; }
   auto queue() const noexcept { return queue_; }
   auto allocator() const noexcept { return allocator_; }
@@ -220,9 +144,6 @@ public:
   void waitIdle() { vkDeviceWaitIdle(device_); }
 
 private:
-  VkInstance instance_;
-  VkDebugUtilsMessengerEXT messenger_;
-
   VkPhysicalDevice physicalDevice_;
   VkDevice device_;
   int queueIndex_ = -1;
@@ -233,22 +154,22 @@ private:
   VkCommandPool commandPool_;
 };
 
-Engine::Engine(const EngineInfo& createInfo)
-    : impl_(std::make_shared<Impl>(createInfo)) {}
+Device::Device(Instance instance, const DeviceInfo& createInfo)
+    : impl_(std::make_shared<Impl>(instance, createInfo)) {}
 
-VkInstance Engine::instance() const { return impl_->instance(); }
-VkPhysicalDevice Engine::physicalDevice() const {
+Device::operator VkDevice() const { return *impl_; }
+
+VkPhysicalDevice Device::physicalDevice() const {
   return impl_->physicalDevice();
 }
-VkDevice Engine::device() const { return impl_->device(); }
-int Engine::queueIndex() const { return impl_->queueIndex(); }
-VkQueue Engine::queue() const { return impl_->queue(); }
-VmaAllocator Engine::allocator() const { return impl_->allocator(); }
-VkDescriptorPool Engine::descriptorPool() const {
+int Device::queueIndex() const { return impl_->queueIndex(); }
+VkQueue Device::queue() const { return impl_->queue(); }
+VmaAllocator Device::allocator() const { return impl_->allocator(); }
+VkDescriptorPool Device::descriptorPool() const {
   return impl_->descriptorPool();
 }
 
-void Engine::submit(CommandRecordFunc command) { impl_->submit(command); }
-void Engine::waitIdle() { impl_->waitIdle(); }
+void Device::submit(CommandRecordFunc command) { impl_->submit(command); }
+void Device::waitIdle() { impl_->waitIdle(); }
 
 }  // namespace instarf

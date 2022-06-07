@@ -7,15 +7,15 @@
 
 namespace instarf {
 
-class Engine;
+class Device;
 
 class Attachment {
 public:
   Attachment() = default;
-  explicit Attachment(Engine engine, VkFormat format,
+  explicit Attachment(Device device, VkFormat format,
                       VkSampleCountFlagBits samples);
   ~Attachment() = default;
-  
+
   operator VkImageView() const;
 
   VkImageUsageFlags usage() const;

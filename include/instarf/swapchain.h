@@ -7,12 +7,13 @@
 
 namespace instarf {
 
-class Engine;
+class Instance;
+class Device;
 
 class Swapchain {
 public:
   Swapchain() = default;
-  Swapchain(Engine engine, VkSurfaceKHR surface);
+  Swapchain(Instance instance, Device device, VkSurfaceKHR surface);
   ~Swapchain() = default;
 
   uint32_t imageCount() const;
