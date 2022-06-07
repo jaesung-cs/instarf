@@ -21,6 +21,7 @@ private:
   class Impl;
   std::shared_ptr<Impl> impl_;
 };
+
 }  // namespace instarf
 
 #endif  // INSTARF_RENDER_PASS_H

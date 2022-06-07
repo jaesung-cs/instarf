@@ -1,34 +1,9 @@
 #include <instarf/graphics_pipeline.h>
 
-#include <fstream>
-
 #include <instarf/engine.h>
+#include <instarf/detail/shader_module.h>
 
 namespace instarf {
-namespace {
-VkShaderModule createShaderModule(VkDevice device,
-                                  const std::string& filepath) {
-  VkShaderModule shaderModule;
-
-  std::vector<uint8_t> code;
-  {
-    std::ifstream in(filepath, std::ios::ate | std::ios::binary);
-
-    uint64_t filesize = in.tellg();
-    code.resize(filesize);
-
-    in.seekg(0);
-    in.read(reinterpret_cast<char*>(code.data()), filesize);
-  }
-
-  VkShaderModuleCreateInfo shaderModuleInfo = {
-      VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO};
-  shaderModuleInfo.codeSize = code.size();
-  shaderModuleInfo.pCode = reinterpret_cast<uint32_t*>(code.data());
-  vkCreateShaderModule(device, &shaderModuleInfo, nullptr, &shaderModule);
-  return shaderModule;
-}
-}  // namespace
 
 class GraphicsPipeline::Impl {
 public:

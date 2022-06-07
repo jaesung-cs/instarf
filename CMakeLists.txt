@@ -44,7 +44,10 @@ endforeach()
 add_custom_target(irf_shader DEPENDS ${IRF_SHADER_OUTPUT_FILES})
 
 file(GLOB_RECURSE IRF_SOURCE_FILES ${PROJECT_SOURCE_DIR}/src/instarf/*.cc)
-file(GLOB_RECURSE IRF_INCLUDE_FILES ${PROJECT_SOURCE_DIR}/include/instarf/*.h)
+file(GLOB_RECURSE IRF_INCLUDE_FILES
+  ${PROJECT_SOURCE_DIR}/include/instarf/*.h
+  ${PROJECT_SOURCE_DIR}/src/instarf/*.h
+)
 
 add_executable(irf
   ${IRF_SOURCE_FILES}
@@ -56,6 +59,7 @@ add_dependencies(irf irf_shader)
 
 target_include_directories(irf PRIVATE
   ${PROJECT_SOURCE_DIR}/include
+  ${PROJECT_SOURCE_DIR}/src
 )
 
 target_link_libraries(irf
