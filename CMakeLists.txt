@@ -18,7 +18,7 @@ find_package(Vulkan REQUIRED)
 
 add_subdirectory(dependencies/VulkanMemoryAllocator)
 
-# irf
+# irf shader
 file(GLOB_RECURSE IRF_SHADER_SOURCE_VERT_FILES ${PROJECT_SOURCE_DIR}/assets/shaders/*.vert)
 file(GLOB_RECURSE IRF_SHADER_SOURCE_FRAG_FILES ${PROJECT_SOURCE_DIR}/assets/shaders/*.frag)
 file(GLOB_RECURSE IRF_SHADER_SOURCE_COMP_FILES ${PROJECT_SOURCE_DIR}/assets/shaders/*.comp)
@@ -28,7 +28,7 @@ set(IRF_SHADER_SOURCE_FILES
   ${IRF_SHADER_SOURCE_COMP_FILES}
 )
 
-# Shader compile commands
+# shader compile commands
 foreach(SHADER_FILE ${IRF_SHADER_SOURCE_FILES})
   set(SHADER_OUTPUT_FILE ${SHADER_FILE}.spv)
   list(APPEND IRF_SHADER_OUTPUT_FILES ${SHADER_OUTPUT_FILE})
@@ -43,9 +43,34 @@ endforeach()
 
 add_custom_target(irf_shader DEPENDS ${IRF_SHADER_OUTPUT_FILES})
 
-file(GLOB_RECURSE IRF_SOURCE_FILES ${PROJECT_SOURCE_DIR}/src/instarf/*.cc)
-file(GLOB_RECURSE IRF_INCLUDE_FILES
+# irf_gpu
+file(GLOB_RECURSE IRF_GPU_SOURCE_FILES ${PROJECT_SOURCE_DIR}/src/instarf/gpu/*.cc)
+file(GLOB_RECURSE IRF_GPU_INCLUDE_FILES
+  ${PROJECT_SOURCE_DIR}/include/instarf/gpu/*.h
+  ${PROJECT_SOURCE_DIR}/src/instarf/gpu/*.h
+)
+
+add_library(irf_gpu
+  ${IRF_GPU_SOURCE_FILES}
+  ${IRF_GPU_INCLUDE_FILES}
+)
+
+target_include_directories(irf_gpu PRIVATE
+  ${PROJECT_SOURCE_DIR}/include
+  ${PROJECT_SOURCE_DIR}/src
+)
+
+target_link_libraries(irf_gpu
+  Vulkan::Vulkan
+  glm::glm
+  VulkanMemoryAllocator
+)
+
+# irf
+file(GLOB IRF_SOURCE_FILES ${PROJECT_SOURCE_DIR}/src/instarf/*.cc)
+file(GLOB IRF_INCLUDE_FILES
   ${PROJECT_SOURCE_DIR}/include/instarf/*.h
+  ${PROJECT_SOURCE_DIR}/include/instarf/shader/*.h
   ${PROJECT_SOURCE_DIR}/src/instarf/*.h
 )
 
@@ -63,12 +88,9 @@ target_include_directories(irf PRIVATE
 )
 
 target_link_libraries(irf
-  Vulkan::Vulkan
-  nlohmann_json nlohmann_json::nlohmann_json
-  glm::glm
+  irf_gpu
   glfw
   imgui::imgui
-  VulkanMemoryAllocator
   opencv_core opencv_imgcodecs
 )
 
