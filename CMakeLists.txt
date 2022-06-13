@@ -55,9 +55,11 @@ add_library(irf_gpu
   ${IRF_GPU_INCLUDE_FILES}
 )
 
-target_include_directories(irf_gpu PRIVATE
-  ${PROJECT_SOURCE_DIR}/include
-  ${PROJECT_SOURCE_DIR}/src
+target_include_directories(irf_gpu
+  PUBLIC
+    ${PROJECT_SOURCE_DIR}/include
+  PRIVATE
+    ${PROJECT_SOURCE_DIR}/src
 )
 
 target_link_libraries(irf_gpu
@@ -92,6 +94,19 @@ target_link_libraries(irf
   glfw
   imgui::imgui
   opencv_core opencv_imgcodecs
+)
+
+# test
+file(GLOB TEST_IRF_SOURCE_FILES ${PROJECT_SOURCE_DIR}/test/*.cc)
+
+add_executable(test_irf
+  ${TEST_IRF_SOURCE_FILES}
+)
+
+add_dependencies(test_irf irf_shader)
+
+target_link_libraries(test_irf
+  irf_gpu
 )
 
 # copy assets
