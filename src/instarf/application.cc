@@ -15,19 +15,19 @@
 #include <imgui_impl_vulkan.h>
 
 #include <instarf/camera.h>
-#include <instarf/instance.h>
-#include <instarf/device.h>
-#include <instarf/swapchain.h>
-#include <instarf/attachment.h>
-#include <instarf/render_pass.h>
-#include <instarf/render_pass_ui.h>
-#include <instarf/framebuffer.h>
-#include <instarf/descriptor_layout.h>
-#include <instarf/pipeline_layout.h>
-#include <instarf/graphics_pipeline.h>
-#include <instarf/descriptor.h>
-#include <instarf/uniform_buffer.h>
-#include <instarf/buffer.h>
+#include <instarf/gpu/instance.h>
+#include <instarf/gpu/device.h>
+#include <instarf/gpu/swapchain.h>
+#include <instarf/gpu/attachment.h>
+#include <instarf/gpu/render_pass.h>
+#include <instarf/gpu/render_pass_ui.h>
+#include <instarf/gpu/framebuffer.h>
+#include <instarf/gpu/descriptor_layout.h>
+#include <instarf/gpu/pipeline_layout.h>
+#include <instarf/gpu/graphics_pipeline.h>
+#include <instarf/gpu/descriptor.h>
+#include <instarf/gpu/uniform_buffer.h>
+#include <instarf/gpu/buffer.h>
 #include <instarf/shader/camera_ubo.h>
 
 namespace instarf {
@@ -56,58 +56,58 @@ void Application::run() {
   const char** instanceExtensions =
       glfwGetRequiredInstanceExtensions(&instanceExtensionCount);
 
-  InstanceInfo instanceInfo;
+  gpu::InstanceInfo instanceInfo;
   instanceInfo.extensions = std::vector<std::string>(
       instanceExtensions, instanceExtensions + instanceExtensionCount);
-  Instance instance(instanceInfo);
+  gpu::Instance instance(instanceInfo);
 
   VkSurfaceKHR surface;
   glfwCreateWindowSurface(instance, window_, nullptr, &surface);
 
-  DeviceInfo deviceInfo;
-  Device device(instance, deviceInfo);
+  gpu::DeviceInfo deviceInfo;
+  gpu::Device device(instance, deviceInfo);
 
-  Swapchain swapchain(instance, device, surface);
-  Attachment colorAttachment(device, VK_FORMAT_B8G8R8A8_UNORM,
+  gpu::Swapchain swapchain(instance, device, surface);
+  gpu::Attachment colorAttachment(device, VK_FORMAT_B8G8R8A8_UNORM,
                              VK_SAMPLE_COUNT_4_BIT);
-  Attachment depthAttachment(device, VK_FORMAT_D32_SFLOAT,
+  gpu::Attachment depthAttachment(device, VK_FORMAT_D32_SFLOAT,
                              VK_SAMPLE_COUNT_4_BIT);
 
-  RenderPass renderPass(device);
-  RenderPassUi renderPassUi(device);
+  gpu::RenderPass renderPass(device);
+  gpu::RenderPassUi renderPassUi(device);
 
-  FramebufferInfo framebufferInfo;
+  gpu::FramebufferInfo framebufferInfo;
   framebufferInfo.renderPass = renderPass;
   framebufferInfo.imageInfos = {
       {colorAttachment.usage(), colorAttachment.format()},
       {depthAttachment.usage(), depthAttachment.format()},
       {swapchain.imageUsage(), swapchain.format()},
   };
-  Framebuffer framebuffer(device, framebufferInfo);
+  gpu::Framebuffer framebuffer(device, framebufferInfo);
 
   framebufferInfo.renderPass = renderPassUi;
   framebufferInfo.imageInfos = {
       {swapchain.imageUsage(), swapchain.format()},
   };
-  Framebuffer framebufferUi(device, framebufferInfo);
+  gpu::Framebuffer framebufferUi(device, framebufferInfo);
 
-  DescriptorLayoutInfo descriptorLayoutInfo;
+  gpu::DescriptorLayoutInfo descriptorLayoutInfo;
   descriptorLayoutInfo.bindings = {
       {0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC,
        VK_SHADER_STAGE_VERTEX_BIT},
   };
-  DescriptorLayout cameraLayout(device, descriptorLayoutInfo);
+  gpu::DescriptorLayout cameraLayout(device, descriptorLayoutInfo);
 
-  PipelineLayoutInfo pipelineLayoutInfo;
+  gpu::PipelineLayoutInfo pipelineLayoutInfo;
   pipelineLayoutInfo.layouts = {
       cameraLayout,
   };
   pipelineLayoutInfo.pushConstantRanges = {
       {VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(glm::mat4)},
   };
-  PipelineLayout pipelineLayout(device, pipelineLayoutInfo);
+  gpu::PipelineLayout pipelineLayout(device, pipelineLayoutInfo);
 
-  GraphicsPipelineInfo pipelineInfo;
+  gpu::GraphicsPipelineInfo pipelineInfo;
   pipelineInfo.directory = "C:\\workspace\\instarf\\assets\\shaders";
   pipelineInfo.name = "color";
   pipelineInfo.bindings = {
@@ -122,18 +122,18 @@ void Application::run() {
   pipelineInfo.layout = pipelineLayout;
   pipelineInfo.renderPass = renderPass;
   pipelineInfo.subpass = 0;
-  GraphicsPipeline colorPipeline(device, pipelineInfo);
+  gpu::GraphicsPipeline colorPipeline(device, pipelineInfo);
 
-  UniformBuffer<CameraUbo> cameraBuffer(device, swapchain.imageCount());
+  gpu::UniformBuffer<CameraUbo> cameraBuffer(device, swapchain.imageCount());
 
-  Descriptor cameraDescriptor(device, cameraLayout);
+  gpu::Descriptor cameraDescriptor(device, cameraLayout);
   cameraDescriptor.bind(0, cameraBuffer);
 
-  VertexBuffer<float> linesVertex(
+  gpu::VertexBuffer<float> linesVertex(
       device, {0.f, 0.f, 0.f, 1.f, 0.f, 0.f, 1.f, 0.f, 0.f, 1.f, 0.f, 0.f,
                0.f, 0.f, 0.f, 0.f, 1.f, 0.f, 0.f, 1.f, 0.f, 0.f, 1.f, 0.f,
                0.f, 0.f, 0.f, 0.f, 0.f, 1.f, 0.f, 0.f, 1.f, 0.f, 0.f, 1.f});
-  IndexBuffer linesIndex(device, {0, 1, 2, 3, 4, 5});
+  gpu::IndexBuffer linesIndex(device, {0, 1, 2, 3, 4, 5});
 
   // ImGui
   IMGUI_CHECKVERSION();
