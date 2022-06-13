@@ -1,0 +1,179 @@
+#version 450 core
+
+#extension GL_KHR_shader_subgroup_basic : require
+#extension GL_KHR_shader_subgroup_arithmetic : require
+
+layout (local_size_x = 8, local_size_y = 4) in;
+
+layout (constant_id = 0) const int ra = 16;
+layout (constant_id = 1) const int rc = 48;
+layout (constant_id = 2) const int latentDim = 27;  // TODO
+layout (constant_id = 3) const int featDim = 64;
+
+layout (set = 0, binding = 0) uniform ModelUbo {
+  uvec3 gridSize;
+  float stepSize;
+} model;
+
+// [0]: [Nz, Ra]
+// [1]: [Nx, Ra]
+// [2]: [Ny, Ra]
+layout (std430, set = 0, binding = 1) buffer readonly SigmaVectorSsbo {
+  float data[];
+} sigmaVectors[3];
+
+// [0]: [Ny, Nx, Ra]
+// [1]: [Nz, Ny, Ra]
+// [2]: [Nx, Nz, Ra]
+layout (std430, set = 0, binding = 2) buffer readonly SigmaMatrixSsbo {
+  float data[];
+} sigmaMatrices[3];
+
+// [0]: [Nz, Rc]
+// [1]: [Nx, Rc]
+// [2]: [Ny, Rc]
+layout (std430, set = 0, binding = 3) buffer readonly ColorVectorSsbo {
+  float data[];
+} colorVectors[3];
+
+// [0]: [Nx, Ny, Rc]
+// [1]: [Ny, Nz, Rc]
+// [2]: [Nz, Nx, Rc]
+layout (std430, set = 0, binding = 4) buffer readonly ColorMatrixSsbo {
+  float data[];
+} colorMatrices[3];
+
+// MLP, + 1 for bias
+// [0]: [feat_dim + 1, latent_dim]
+// [1]: [latent_dim + 1, latent_dim]
+// [2]: [latent_dim + 1, latent_dim]
+// [3]: [latent_dim + 1, out_dim]
+layout (std430, set = 0, binding = 5) buffer readonly MlpSsbo {
+  float data[];
+} mlp[4];
+
+layout (rgba8, set = 1, binding = 0) uniform writeonly image2D outImage;
+
+float calc_sigma(ivec3 ipos, vec3 fpos, int subgroupIndex) {
+  uint nx = model.gridSize.x;
+  uint ny = model.gridSize.y;
+  uint nz = model.gridSize.z;
+  
+  float va0 = 0.f;
+  float va1 = 0.f;
+  float va2 = 0.f;
+  
+  if (subgroupIndex < ra) {
+    float mxy00 = sigmaMatrices[0].data[((ipos.y + 0) * nx + (ipos.x + 0)) * ra + subgroupIndex];
+    float mxy01 = sigmaMatrices[0].data[((ipos.y + 0) * nx + (ipos.x + 1)) * ra + subgroupIndex];
+    float mxy10 = sigmaMatrices[0].data[((ipos.y + 1) * nx + (ipos.x + 0)) * ra + subgroupIndex];
+    float mxy11 = sigmaMatrices[0].data[((ipos.y + 1) * nx + (ipos.x + 1)) * ra + subgroupIndex];
+    float vz0   = sigmaVectors[0].data[(ipos.z + 0) * ra + subgroupIndex];
+    float vz1   = sigmaVectors[0].data[(ipos.z + 1) * ra + subgroupIndex];
+  
+    float mxy0  = mix(mxy00, mxy01, fpos.x);
+    float mxy1  = mix(mxy10, mxy11, fpos.x);
+    float mxy   = mix(mxy0, mxy1, fpos.y);
+    float vz    = mix(vz0, vz1, fpos.z);
+  
+    va0 = mxy * vz;
+  }
+  va0 = subgroupAdd(va0);
+  
+  if (subgroupIndex < ra) {
+    float myz00 = sigmaMatrices[1].data[((ipos.z + 0) * ny + (ipos.y + 0)) * ra + subgroupIndex];
+    float myz01 = sigmaMatrices[1].data[((ipos.z + 0) * ny + (ipos.y + 1)) * ra + subgroupIndex];
+    float myz10 = sigmaMatrices[1].data[((ipos.z + 1) * ny + (ipos.y + 0)) * ra + subgroupIndex];
+    float myz11 = sigmaMatrices[1].data[((ipos.z + 1) * ny + (ipos.y + 1)) * ra + subgroupIndex];
+    float vx0   = sigmaVectors[1].data[(ipos.x + 0) * ra + subgroupIndex];
+    float vx1   = sigmaVectors[1].data[(ipos.x + 1) * ra + subgroupIndex];
+  
+    float myz0  = mix(myz00, myz01, fpos.y);
+    float myz1  = mix(myz10, myz11, fpos.y);
+    float myz   = mix(myz0, myz1, fpos.z);
+    float vx    = mix(vx0, vx1, fpos.x);
+  
+    va1 = myz * vx;
+  }
+  va1 = subgroupAdd(va1);
+    
+  if (subgroupIndex < ra) {
+    float mzx00 = sigmaMatrices[2].data[((ipos.x + 0) * nz + (ipos.z + 0)) * ra + subgroupIndex];
+    float mzx01 = sigmaMatrices[2].data[((ipos.x + 0) * nz + (ipos.z + 1)) * ra + subgroupIndex];
+    float mzx10 = sigmaMatrices[2].data[((ipos.x + 1) * nz + (ipos.z + 0)) * ra + subgroupIndex];
+    float mzx11 = sigmaMatrices[2].data[((ipos.x + 1) * nz + (ipos.z + 1)) * ra + subgroupIndex];
+    float vy0   = sigmaVectors[2].data[(ipos.y + 0) * ra + subgroupIndex];
+    float vy1   = sigmaVectors[2].data[(ipos.y + 1) * ra + subgroupIndex];
+  
+    float mzx0  = mix(mzx00, mzx01, fpos.z);
+    float mzx1  = mix(mzx10, mzx11, fpos.z);
+    float mzx   = mix(mzx0, mzx1, fpos.x);
+    float vy    = mix(vy0, vy1, fpos.y);
+  
+    va2 = mzx * vy;
+  }
+  va2 = subgroupAdd(va2);
+  
+  float va = va0 + va1 + va2;
+  return va;
+}
+
+vec3 calc_color(ivec3 ipos, vec3 fpos, int subgroupIndex) {
+  // TODO
+  return vec3(0.f, 1.f, 0.f);
+}
+
+// [Y, X]
+shared vec4 rays0[32];
+shared vec4 rays1[32];
+shared vec4 result[32];
+
+void main() {
+  int subgroupSize = int(gl_SubgroupSize);
+  int subgroupIndex = int(gl_SubgroupInvocationID);
+  ivec2 basePixelLocation = ivec2(gl_WorkGroupID.xy * gl_WorkGroupSize.xy);
+  ivec2 rectSize = ivec2(gl_WorkGroupSize.xy);
+
+  // Compute o, d, t0, t1
+  int pixelLocation = gl_LocalInvocationID.y * rectSize.x + gl_LocalInvocationID.x;
+  rays0[pixelLocation].xyz;
+  rays0[pixelLocation].w;
+  rays1[pixelLocation].xyz;
+  rays1[pixelLocation].w;
+
+  for (int x = 0; x < rectSize.x; x++) for (int y = 0; y < rectSize.y; y++) {
+    ivec2 pixelLocation = basePixelLocation + ivec2(x, y);
+
+    vec4 ray0 = rays0[y * rectSize.x + x];
+    vec4 ray1 = rays1[y * rectSize.x + x];
+    vec3 o = ray0.xyz;
+    vec3 d = ray1.xyz;
+    float t0 = ray0.w;
+    float t1 = ray1.w;
+    float stepSize = model.stepSize;
+
+    float t = t0;
+    vec4 acc = vec4(0.f, 0.f, 0.f, 1.f);
+    while (t < t1 && acc.a > 1.f / 255.f) {
+      // Compute grid position
+      vec3 gridPosition;
+
+      ivec3 ipos = min(ivec3(gridPosition), ivec3(model.gridSize - 1));
+      fvec3 fpos = gridPosition - ipos;
+      float sigma = calc_sigma(ipos, fpos, subgroupIndex);
+
+      float alpha = exp(-max(sigma, 0.f) * stepSize);
+
+      vec3 color = calc_color(ipos, fpos, subgroupIndex);
+
+      acc.rgb += color * acc.a * alpha;
+      acc.a *= 1.f - alpha;
+
+      t += stepSize;
+    }
+
+    result[y * rectSize.x + x] = acc;
+  }
+
+  imageStore(outImage, basePixelLocation + pixelLocation, result[pixelLocation.y * rectSize.x + pixelLocation.x]); 
+}
