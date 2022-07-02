@@ -8,13 +8,12 @@
 namespace instarf {
 namespace gpu {
 
-class Instance;
 class Device;
 
 class Swapchain {
 public:
   Swapchain() = default;
-  Swapchain(Instance instance, Device device, VkSurfaceKHR surface);
+  Swapchain(Device device, VkSurfaceKHR surface);
   ~Swapchain() = default;
 
   uint32_t imageCount() const;

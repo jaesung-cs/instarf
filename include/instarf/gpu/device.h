@@ -29,6 +29,7 @@ public:
 
   operator VkDevice() const;
 
+  VkInstance instance() const;
   VkPhysicalDevice physicalDevice() const;
   int queueIndex() const;
   VkQueue queue() const;

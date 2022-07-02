@@ -67,7 +67,7 @@ void Application::run() {
   gpu::DeviceInfo deviceInfo;
   gpu::Device device(instance, deviceInfo);
 
-  gpu::Swapchain swapchain(instance, device, surface);
+  gpu::Swapchain swapchain(device, surface);
   gpu::Attachment colorAttachment(device, VK_FORMAT_B8G8R8A8_UNORM,
                              VK_SAMPLE_COUNT_4_BIT);
   gpu::Attachment depthAttachment(device, VK_FORMAT_D32_SFLOAT,

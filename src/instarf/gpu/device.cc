@@ -9,7 +9,7 @@ class Device::Impl {
 public:
   Impl() = delete;
 
-  Impl(Instance instance, const DeviceInfo& createInfo) {
+  Impl(Instance instance, const DeviceInfo& createInfo) : instance_(instance) {
     // Physical device
     // TODO: match with UUID
     uint32_t physicalDeviceCount;
@@ -117,6 +117,7 @@ public:
 
   operator VkDevice() const noexcept { return device_; }
 
+  auto instance() const noexcept { return instance_; }
   auto physicalDevice() const noexcept { return physicalDevice_; }
   auto queueIndex() const noexcept { return queueIndex_; }
   auto queue() const noexcept { return queue_; }
@@ -145,6 +146,7 @@ public:
   void waitIdle() { vkDeviceWaitIdle(device_); }
 
 private:
+  VkInstance instance_;
   VkPhysicalDevice physicalDevice_;
   VkDevice device_;
   int queueIndex_ = -1;
@@ -160,6 +162,7 @@ Device::Device(Instance instance, const DeviceInfo& createInfo)
 
 Device::operator VkDevice() const { return *impl_; }
 
+VkInstance Device::instance() const { return impl_->instance(); }
 VkPhysicalDevice Device::physicalDevice() const {
   return impl_->physicalDevice();
 }

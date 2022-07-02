@@ -3,7 +3,6 @@
 #include <iostream>
 #include <vector>
 
-#include <instarf/gpu/instance.h>
 #include <instarf/gpu/device.h>
 
 namespace instarf {
@@ -11,8 +10,8 @@ namespace gpu {
 
 class Swapchain::Impl {
 public:
-  Impl(Instance instance, Device device, VkSurfaceKHR surface)
-      : instance_(instance), device_(device), surface_(surface) {
+  Impl(Device device, VkSurfaceKHR surface)
+      : device_(device), surface_(surface) {
     imageCount_ = 3;
 
     swapchainInfo_ = {VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR};
@@ -93,7 +92,9 @@ public:
 
     destroyImageViews();
     vkDestroySwapchainKHR(device_, swapchain_, nullptr);
-    vkDestroySurfaceKHR(instance_, surface_, nullptr);
+
+    auto instance = device_.instance();
+    vkDestroySurfaceKHR(instance, surface_, nullptr);
   }
 
   auto imageCount() const noexcept { return imageCount_; }
@@ -230,7 +231,6 @@ private:
     imageViews_.clear();
   }
 
-  Instance instance_;
   Device device_;
 
   VkSurfaceKHR surface_;
@@ -253,8 +253,8 @@ private:
   std::vector<VkFence> frameFinishedFences_;
 };
 
-Swapchain::Swapchain(Instance instance, Device device, VkSurfaceKHR surface)
-    : impl_(std::make_shared<Impl>(instance, device, surface)) {}
+Swapchain::Swapchain(Device device, VkSurfaceKHR surface)
+    : impl_(std::make_shared<Impl>(device, surface)) {}
 
 uint32_t Swapchain::imageCount() const { return impl_->imageCount(); }
 VkImageUsageFlags Swapchain::imageUsage() const { return impl_->imageUsage(); }
