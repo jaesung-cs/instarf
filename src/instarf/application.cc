@@ -69,9 +69,9 @@ void Application::run() {
 
   gpu::Swapchain swapchain(device, surface);
   gpu::Attachment colorAttachment(device, VK_FORMAT_B8G8R8A8_UNORM,
-                             VK_SAMPLE_COUNT_4_BIT);
+                                  VK_SAMPLE_COUNT_4_BIT);
   gpu::Attachment depthAttachment(device, VK_FORMAT_D32_SFLOAT,
-                             VK_SAMPLE_COUNT_4_BIT);
+                                  VK_SAMPLE_COUNT_4_BIT);
 
   gpu::RenderPass renderPass(device);
   gpu::RenderPassUi renderPassUi(device);

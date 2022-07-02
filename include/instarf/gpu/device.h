@@ -1,18 +1,16 @@
 #ifndef INSTARF_GPU_DEVICE_H
 #define INSTARF_GPU_DEVICE_H
 
-#include <memory>
 #include <vector>
 #include <string>
 #include <functional>
 
 #include <vulkan/vulkan.h>
+
 #include "vk_mem_alloc.h"
 
 namespace instarf {
 namespace gpu {
-
-class Instance;
 
 struct DeviceInfo {
   std::vector<std::string> extensions;
@@ -23,25 +21,32 @@ protected:
   using CommandRecordFunc = std::function<void(VkCommandBuffer)>;
 
 public:
-  Device() = default;
-  Device(Instance instance, const DeviceInfo& createInfo);
-  ~Device() = default;
+  Device() = delete;
+  Device(VkInstance instance, const DeviceInfo& createInfo);
+  ~Device();
 
-  operator VkDevice() const;
+  operator VkDevice() const noexcept { return device_; }
 
-  VkInstance instance() const;
-  VkPhysicalDevice physicalDevice() const;
-  int queueIndex() const;
-  VkQueue queue() const;
-  VmaAllocator allocator() const;
-  VkDescriptorPool descriptorPool() const;
+  auto instance() const noexcept { return instance_; }
+  auto physicalDevice() const noexcept { return physicalDevice_; }
+  int queueIndex() const noexcept { return queueIndex_; }
+  auto queue() const noexcept { return queue_; }
+  auto allocator() const noexcept { return allocator_; }
+  auto descriptorPool() const noexcept { return descriptorPool_; }
 
-  void submit(CommandRecordFunc command);
+  void submit(CommandRecordFunc command) const;
   void waitIdle();
 
 private:
-  class Impl;
-  std::shared_ptr<Impl> impl_;
+  VkInstance instance_ = VK_NULL_HANDLE;
+  VkPhysicalDevice physicalDevice_ = VK_NULL_HANDLE;
+  VkDevice device_ = VK_NULL_HANDLE;
+  int queueIndex_ = -1;
+  VkQueue queue_ = VK_NULL_HANDLE;
+
+  VmaAllocator allocator_ = VK_NULL_HANDLE;
+  VkDescriptorPool descriptorPool_ = VK_NULL_HANDLE;
+  VkCommandPool commandPool_ = VK_NULL_HANDLE;
 };
 
 }  // namespace gpu

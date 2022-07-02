@@ -1,7 +1,6 @@
 #ifndef INSTARF_GPU_FRAMEBUFFER_H
 #define INSTARF_GPU_FRAMEBUFFER_H
 
-#include <memory>
 #include <vector>
 
 #include <vulkan/vulkan.h>
@@ -23,17 +22,22 @@ struct FramebufferInfo {
 
 class Framebuffer {
 public:
-  Framebuffer() = default;
-  Framebuffer(Device device, const FramebufferInfo& createInfo);
-  ~Framebuffer() = default;
+  Framebuffer() = delete;
+  Framebuffer(const Device& device, const FramebufferInfo& createInfo);
+  ~Framebuffer();
 
-  operator VkFramebuffer() const;
+  operator VkFramebuffer() const noexcept { return framebuffer_; }
 
   void resize(uint32_t width, uint32_t height);
 
 private:
-  class Impl;
-  std::shared_ptr<Impl> impl_;
+  VkDevice device_ = VK_NULL_HANDLE;
+
+  std::vector<VkFormat> formats_;
+  std::vector<VkFramebufferAttachmentImageInfo> imageInfos_;
+  VkFramebufferAttachmentsCreateInfo attachmentsInfo_ = {};
+  VkFramebufferCreateInfo framebufferInfo_ = {};
+  VkFramebuffer framebuffer_ = VK_NULL_HANDLE;
 };
 
 }  // namespace gpu

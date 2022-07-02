@@ -1,7 +1,6 @@
 #ifndef INSTARF_GPU_DESCRIPTOR_LAYOUT_H
 #define INSTARF_GPU_DESCRIPTOR_LAYOUT_H
 
-#include <memory>
 #include <vector>
 
 #include <vulkan/vulkan.h>
@@ -22,15 +21,16 @@ struct DescriptorLayoutInfo {
 
 class DescriptorLayout {
 public:
-  DescriptorLayout() = default;
-  DescriptorLayout(Device device, const DescriptorLayoutInfo& createInfo);
-  ~DescriptorLayout() = default;
+  DescriptorLayout() = delete;
+  DescriptorLayout(const Device& device, const DescriptorLayoutInfo& createInfo);
+  ~DescriptorLayout();
 
-  operator VkDescriptorSetLayout() const;
+  operator VkDescriptorSetLayout() const noexcept { return layout_; }
 
 private:
-  class Impl;
-  std::shared_ptr<Impl> impl_;
+  VkDevice device_ = VK_NULL_HANDLE;
+
+  VkDescriptorSetLayout layout_ = VK_NULL_HANDLE;
 };
 
 }  // namespace gpu

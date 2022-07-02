@@ -1,7 +1,6 @@
 #ifndef INSTARF_GPU_PIPELINE_LAYOUT_H
 #define INSTARF_GPU_PIPELINE_LAYOUT_H
 
-#include <memory>
 #include <vector>
 
 #include <vulkan/vulkan.h>
@@ -18,15 +17,16 @@ struct PipelineLayoutInfo {
 
 class PipelineLayout {
 public:
-  PipelineLayout() = default;
-  PipelineLayout(Device device, const PipelineLayoutInfo& createInfo);
-  ~PipelineLayout() = default;
+  PipelineLayout() = delete;
+  PipelineLayout(const Device& device, const PipelineLayoutInfo& createInfo);
+  ~PipelineLayout();
 
-  operator VkPipelineLayout() const;
+  operator VkPipelineLayout() const noexcept { return layout_; }
 
 private:
-  class Impl;
-  std::shared_ptr<Impl> impl_;
+  VkDevice device_ = VK_NULL_HANDLE;
+
+  VkPipelineLayout layout_ = VK_NULL_HANDLE;
 };
 
 }  // namespace gpu

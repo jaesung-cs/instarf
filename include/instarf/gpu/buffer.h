@@ -1,47 +1,50 @@
 #ifndef INSTARF_GPU_BUFFER_H
 #define INSTARF_GPU_BUFFER_H
 
-#include <memory>
+#include <vector>
 
 #include <vulkan/vulkan.h>
 
-#include <instarf/gpu/device.h>
+#include "vk_mem_alloc.h"
 
 namespace instarf {
 namespace gpu {
 
+class Device;
+
 class BufferBase {
 public:
-  BufferBase() = default;
-  BufferBase(Device device, VkBufferUsageFlags usage, VkDeviceSize size,
-             const void* ptr = nullptr);
-  virtual ~BufferBase() = default;
+  BufferBase() = delete;
+  BufferBase(const Device& device, VkBufferUsageFlags usage, VkDeviceSize size, const void* ptr = nullptr);
+  virtual ~BufferBase();
 
-  operator VkBuffer() const;
+  operator VkBuffer() const noexcept { return buffer_; }
 
 private:
-  class Impl;
-  std::shared_ptr<Impl> impl_;
+  VmaAllocator allocator_ = VK_NULL_HANDLE;
+
+  VkBuffer buffer_ = VK_NULL_HANDLE;
+  VmaAllocation allocation_ = VK_NULL_HANDLE;
+
+  VkBuffer stagingBuffer_ = VK_NULL_HANDLE;
+  VmaAllocation stagingAllocation_ = VK_NULL_HANDLE;
 };
 
 template <typename T>
 class Buffer : public BufferBase {
 public:
-  Buffer() = default;
+  Buffer() = delete;
 
-  Buffer(Device device, VkBufferUsageFlags usage, uint64_t size)
-      : BufferBase(device, usage, sizeof(T) * size), size_(size) {}
+  Buffer(const Device& device, VkBufferUsageFlags usage, uint64_t size) : BufferBase(device, usage, sizeof(T) * size), size_(size) {}
 
-  Buffer(Device device, VkBufferUsageFlags usage, const std::vector<T>& data)
-      : BufferBase(device, usage, sizeof(T) * data.size(), data.data()),
-        size_(data.size()) {}
+  Buffer(const Device& device, VkBufferUsageFlags usage, const std::vector<T>& data) : BufferBase(device, usage, sizeof(T) * data.size(), data.data()), size_(data.size()) {}
 
   ~Buffer() override = default;
 
   auto size() const noexcept { return size_; }
 
 private:
-  uint64_t size_;
+  uint64_t size_ = 0;
 };
 
 template <typename T, typename Traits>
@@ -50,13 +53,11 @@ private:
   static constexpr VkBufferUsageFlags usage = Traits::usage;
 
 public:
-  BufferWithTraits() = default;
+  BufferWithTraits() = delete;
 
-  BufferWithTraits(Device device, uint64_t size)
-      : Buffer(device, usage, size) {}
+  BufferWithTraits(const Device& device, uint64_t size) : Buffer(device, usage, size) {}
 
-  BufferWithTraits(Device device, const std::vector<T>& data)
-      : Buffer(device, usage, data) {}
+  BufferWithTraits(const Device& device, const std::vector<T>& data) : Buffer(device, usage, data) {}
 
   ~BufferWithTraits() override = default;
 
@@ -64,13 +65,11 @@ private:
 };
 
 struct VertexBufferTraits {
-  static constexpr VkBufferUsageFlags usage =
-      VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+  static constexpr VkBufferUsageFlags usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
 };
 
 struct IndexBufferTraits {
-  static constexpr VkBufferUsageFlags usage =
-      VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+  static constexpr VkBufferUsageFlags usage = VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
 };
 
 template <typename T>

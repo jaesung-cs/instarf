@@ -1,8 +1,6 @@
 #ifndef INSTARF_GPU_RENDER_PASS_H
 #define INSTARF_GPU_RENDER_PASS_H
 
-#include <memory>
-
 #include <vulkan/vulkan.h>
 
 namespace instarf {
@@ -12,15 +10,16 @@ class Device;
 
 class RenderPass {
 public:
-  RenderPass() = default;
-  explicit RenderPass(Device device);
-  ~RenderPass() = default;
+  RenderPass() = delete;
+  explicit RenderPass(const Device& device);
+  ~RenderPass();
 
-  operator VkRenderPass() const;
+  operator VkRenderPass() const noexcept { return renderPass_; }
 
 private:
-  class Impl;
-  std::shared_ptr<Impl> impl_;
+  VkDevice device_ = VK_NULL_HANDLE;
+
+  VkRenderPass renderPass_ = VK_NULL_HANDLE;
 };
 
 }  // namespace gpu

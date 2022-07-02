@@ -10,7 +10,7 @@ namespace gpu {
 
 VkShaderModule createShaderModule(VkDevice device, const std::string& filepath);
 
-}
-}
+}  // namespace gpu
+}  // namespace instarf
 
 #endif  // INSTARF_GPU_DETAIL_SHADER_MODULE_H

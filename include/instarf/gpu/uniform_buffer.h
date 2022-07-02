@@ -1,52 +1,51 @@
 #ifndef INSTARF_GPU_UNIFORM_BUFFER_H
 #define INSTARF_GPU_UNIFORM_BUFFER_H
 
-#include <memory>
-
 #include <vulkan/vulkan.h>
 
-#include <instarf/gpu/device.h>
+#include "vk_mem_alloc.h"
 
 namespace instarf {
 namespace gpu {
 
+class Device;
+
 class UniformBufferBase {
 public:
-  UniformBufferBase() = default;
-  UniformBufferBase(Device device, uint32_t elementSize, uint32_t size);
-  virtual ~UniformBufferBase() = default;
+  UniformBufferBase() = delete;
+  UniformBufferBase(const Device& device, uint32_t elementSize, uint32_t size);
+  virtual ~UniformBufferBase();
 
-  operator VkBuffer() const;
+  operator VkBuffer() const noexcept { return buffer_; }
 
-  uint32_t alignment() const;
-  auto offset(uint32_t index) const { return alignment() * index; }
+  uint32_t alignment() const noexcept { return alignment_; }
+  auto offset(uint32_t index) const noexcept { return alignment_ * index; }
 
 protected:
-  uint8_t* ptr();
-  const uint8_t* ptr() const;
+  uint8_t* ptr() noexcept { return map_; }
+  const uint8_t* ptr() const noexcept { return map_; }
 
 private:
-  class Impl;
-  std::shared_ptr<Impl> impl_;
+  VmaAllocator allocator_ = VK_NULL_HANDLE;
+
+  VkBuffer buffer_ = VK_NULL_HANDLE;
+  VmaAllocation allocation_ = VK_NULL_HANDLE;
+  uint32_t alignment_ = 0;
+  uint8_t* map_ = nullptr;
 };
 
 template <typename T>
 class UniformBuffer : public UniformBufferBase {
 public:
-  UniformBuffer() = default;
+  UniformBuffer() = delete;
 
-  UniformBuffer(Device device, uint32_t size)
-      : UniformBufferBase(device, sizeof(T), size) {}
+  UniformBuffer(const Device& device, uint32_t size) : UniformBufferBase(device, sizeof(T), size) {}
 
   ~UniformBuffer() override = default;
 
-  T& operator[](uint32_t index) {
-    return *reinterpret_cast<T*>(ptr() + offset(index));
-  }
+  T& operator[](uint32_t index) { return *reinterpret_cast<T*>(ptr() + offset(index)); }
 
-  const T& operator[](uint32_t index) const {
-    return *reinterpret_cast<const T*>(ptr() + offset(index));
-  }
+  const T& operator[](uint32_t index) const { return *reinterpret_cast<const T*>(ptr() + offset(index)); }
 
 private:
 };

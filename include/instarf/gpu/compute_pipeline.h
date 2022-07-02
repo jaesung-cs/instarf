@@ -1,7 +1,6 @@
 #ifndef INSTARF_GPU_COMPUTE_PIPELINE_H
 #define INSTARF_GPU_COMPUTE_PIPELINE_H
 
-#include <memory>
 #include <string>
 
 #include <vulkan/vulkan.h>
@@ -19,15 +18,16 @@ struct ComputePipelineInfo {
 
 class ComputePipeline {
 public:
-  ComputePipeline() = default;
-  ComputePipeline(Device device, const ComputePipelineInfo& createInfo);
-  ~ComputePipeline() = default;
+  ComputePipeline() = delete;
+  ComputePipeline(const Device& device, const ComputePipelineInfo& createInfo);
+  ~ComputePipeline();
 
-  operator VkPipeline() const;
+  operator VkPipeline() const noexcept { return pipeline_; }
 
 private:
-  class Impl;
-  std::shared_ptr<Impl> impl_;
+  VkDevice device_ = VK_NULL_HANDLE;
+
+  VkPipeline pipeline_ = VK_NULL_HANDLE;
 };
 
 }  // namespace gpu

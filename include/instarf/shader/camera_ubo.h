@@ -10,6 +10,6 @@ struct CameraUbo {
   alignas(16) glm::mat4 view;
 };
 
-}
+}  // namespace instarf
 
 #endif  // INSTARF_SHADER_CAMERA_UBO_H

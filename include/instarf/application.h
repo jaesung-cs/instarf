@@ -20,6 +20,6 @@ private:
   GLFWwindow* window_ = nullptr;
 };
 
-}  // namespace irf
+}  // namespace instarf
 
 #endif  // INSTARF_APPLICATION_H

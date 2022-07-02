@@ -1,7 +1,6 @@
 #ifndef INSTARF_GPU_INSTANCE_H
 #define INSTARF_GPU_INSTANCE_H
 
-#include <memory>
 #include <vector>
 #include <string>
 
@@ -16,15 +15,15 @@ struct InstanceInfo {
 
 class Instance {
 public:
-  Instance() = default;
+  Instance() = delete;
   explicit Instance(const InstanceInfo& createInfo);
-  ~Instance() = default;
+  ~Instance();
 
-  operator VkInstance() const;
+  operator VkInstance() const noexcept { return instance_; }
 
 private:
-  class Impl;
-  std::shared_ptr<Impl> impl_;
+  VkInstance instance_ = VK_NULL_HANDLE;
+  VkDebugUtilsMessengerEXT messenger_ = VK_NULL_HANDLE;
 };
 
 }  // namespace gpu

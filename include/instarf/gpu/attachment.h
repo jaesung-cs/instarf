@@ -1,9 +1,9 @@
 #ifndef INSTARF_GPU_ATTACHMENT_H
 #define INSTARF_GPU_ATTACHMENT_H
 
-#include <memory>
-
 #include <vulkan/vulkan.h>
+
+#include "vk_mem_alloc.h"
 
 namespace instarf {
 namespace gpu {
@@ -12,21 +12,27 @@ class Device;
 
 class Attachment {
 public:
-  Attachment() = default;
-  explicit Attachment(Device device, VkFormat format,
-                      VkSampleCountFlagBits samples);
-  ~Attachment() = default;
+  Attachment() = delete;
+  explicit Attachment(const Device& device, VkFormat format, VkSampleCountFlagBits samples);
+  ~Attachment();
 
-  operator VkImageView() const;
+  operator VkImageView() const noexcept { return imageView_; }
 
-  VkImageUsageFlags usage() const;
-  VkFormat format() const;
+  auto usage() const noexcept { return imageInfo_.usage; }
+  auto format() const noexcept { return imageInfo_.format; }
 
   void resize(uint32_t width, uint32_t height);
 
 private:
-  class Impl;
-  std::shared_ptr<Impl> impl_;
+  VkDevice device_ = VK_NULL_HANDLE;
+  VmaAllocator allocator_ = VK_NULL_HANDLE;
+
+  VkImageCreateInfo imageInfo_ = {};
+  VkImage image_ = VK_NULL_HANDLE;
+  VmaAllocationCreateInfo allocationInfo_ = {};
+  VmaAllocation allocation_ = VK_NULL_HANDLE;
+  VkImageViewCreateInfo imageViewInfo_ = {};
+  VkImageView imageView_ = VK_NULL_HANDLE;
 };
 
 }  // namespace gpu

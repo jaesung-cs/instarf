@@ -1,30 +1,29 @@
 #ifndef INSTARF_GPU_DESCRIPTOR_H
 #define INSTARF_GPU_DESCRIPTOR_H
 
-#include <memory>
-
 #include <vulkan/vulkan.h>
-
-#include <instarf/gpu/uniform_buffer.h>
 
 namespace instarf {
 namespace gpu {
 
 class Device;
+class UniformBufferBase;
 
 class Descriptor {
 public:
-  Descriptor() = default;
-  Descriptor(Device device, VkDescriptorSetLayout layout);
-  ~Descriptor() = default;
+  Descriptor() = delete;
+  Descriptor(const Device& device, VkDescriptorSetLayout layout);
+  ~Descriptor();
 
-  operator VkDescriptorSet() const;
+  operator VkDescriptorSet() const noexcept { return descriptor_; }
 
-  void bind(uint32_t binding, UniformBufferBase buffer);
+  void bind(uint32_t binding, const UniformBufferBase& buffer);
 
 private:
-  class Impl;
-  std::shared_ptr<Impl> impl_;
+  VkDevice device_ = VK_NULL_HANDLE;
+
+  VkDescriptorPool descriptorPool_ = VK_NULL_HANDLE;
+  VkDescriptorSet descriptor_ = VK_NULL_HANDLE;
 };
 
 }  // namespace gpu
